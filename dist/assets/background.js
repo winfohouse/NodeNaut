@@ -1,0 +1,1 @@
+import"./db.js";console.log(`FlowPilot Service Worker initialized`),chrome.runtime.onInstalled.addListener(()=>{console.log(`FlowPilot Extension installed`)}),chrome.sidePanel.setPanelBehavior({openPanelOnActionClick:!0}).catch(e=>console.error(e)),chrome.runtime.onMessage.addListener((e,t,n)=>(console.log(`Message received in background:`,e),!0));

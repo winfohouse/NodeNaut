@@ -1,0 +1,21 @@
+export enum MessageType {
+  // Workflow Control
+  WORKFLOW_START = 'WORKFLOW_START',
+  WORKFLOW_STOP = 'WORKFLOW_STOP',
+  WORKFLOW_PAUSE = 'WORKFLOW_PAUSE',
+  WORKFLOW_RESUME = 'WORKFLOW_RESUME',
+  
+  // Execution Status
+  STEP_STARTED = 'STEP_STARTED',
+  STEP_COMPLETED = 'STEP_COMPLETED',
+  STEP_FAILED = 'STEP_FAILED',
+  
+  // DOM Actions (Background -> Content)
+  DOM_FILL = 'DOM_FILL',
+  DOM_CLICK = 'DOM_CLICK',
+  DOM_SCAN = 'DOM_SCAN',
+  
+  // Logging & UI
+  LOG_CREATE = 'LOG_CREATE',
+  STATE_UPDATED = 'STATE_UPDATED'
+}

@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "FlowPilot",
+  "version": "0.1.0",
+  "description": "Elite Programmable Browser Workflow & Smart Form Automation Platform",
+  "permissions": [
+    "storage",
+    "sidePanel",
+    "tabs",
+    "scripting"
+  ],
+  "background": {
+    "service_worker": "assets/background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "action": {
+    "default_title": "Open FlowPilot Sidepanel"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["assets/content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
