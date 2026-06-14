@@ -1662,7 +1662,7 @@ js_code
 
 ---
 
-### workflow_context
+### execution_sessions
 
 ```txt
 workflow_id

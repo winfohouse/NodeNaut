@@ -139,7 +139,7 @@ To ensure the extension remains **super lite-weight**, it uses a "Feature Flag" 
 | **workflow_steps** | `id`, `workflow_id`, `order`, `type`, `config_json` | Actions (Fill, Click, Wait, etc.). |
 | **field_mappings** | `id`, `workflow_id`, `field_name`, `selector`, `mode`, `template`, `js_code` | Field-to-Data logic. |
 | **csv_sources** | `id`, `name`, `headers`, `data` | CSV storage. |
-| **workflow_context** | `workflow_id`, `current_step`, `runtime_state`, `variables` | Survivable runtime state. |
+| **execution_sessions** | `workflow_id`, `current_step`, `runtime_state`, `variables` | Survivable runtime state. |
 | **execution_logs**| `id`, `workflow_id`, `step_id`, `type`, `status`, `message`, `timestamp` | Audit history. |
 
 ---
@@ -169,15 +169,17 @@ To ensure the extension remains **super lite-weight**, it uses a "Feature Flag" 
 *   [ ] Smart Wait: Implementation of "Wait-for-Selector" and "Wait-for-URL".
 
 ### Phase 3: Developer Power Features
-*   [ ] Monaco IDE integration (Lazy-loaded).
-*   [ ] Offscreen Document logic execution sandbox.
-*   [ ] Extended API implementation (`FillWith`, `Click`, `WaitFor`).
-*   [ ] Real-time "Bug in Process" console.
+*   [x] Monaco IDE integration (Lazy-loaded).
+*   [x] Offscreen Document logic execution sandbox.
+*   [x] Extended API implementation (`FillWith`, `Click`, `WaitFor`).
+*   [x] Real-time \"Bug in Process\" console.
 
 ### Phase 4: Intelligence & Polishing
-*   [ ] Self-Healing Selectors: Scoring and auto-repair logic.
-*   [ ] AI Integration: ML-based field detection.
-*   [ ] Performance Profiling: 60fps UI and minimal memory footprint.
+*   [x] Self-Healing Selectors: Scoring and auto-repair logic.
+*   [x] AI Integration: ML-based field detection.
+*   [x] Performance Profiling: 60fps UI and minimal memory footprint.
+*   [x] Workflow Recorder: Real-time interaction capture (Clicks, Inputs).
+*   [x] IPC Resilience: Automated content script injection & IIFE bundling.
 
 ---
 
@@ -615,21 +617,9 @@ Request only what is needed, when needed.
 
 ### Dynamic Host Permissions
 
-Instead of:
-
 ```text
 <all_urls>
 ```
-
-FlowPilot requests:
-
-```text
-linkedin.com
-indeed.com
-government-site.gov
-```
-
-only after user approval.
 
 ### Permission Escalation Example
 

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && vite build --mode content",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json"
   },
@@ -21,6 +21,9 @@
   },
   "dependencies": {
     "@lucide/svelte": "^1.17.0",
-    "dexie": "^3.2.0"
+    "@types/papaparse": "^5.5.2",
+    "dexie": "^3.2.0",
+    "monaco-editor": "^0.53.0",
+    "papaparse": "^5.5.3"
   }
 }

@@ -7,7 +7,12 @@
     "storage",
     "sidePanel",
     "tabs",
-    "scripting"
+    "scripting",
+    "activeTab",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "<all_urls>"
   ],
   "background": {
     "service_worker": "assets/background.js",
@@ -25,5 +30,19 @@
       "js": ["assets/content.js"],
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "spa-bridge.js",
+        "assets/*.js",
+        "assets/*.css",
+        "assets/*.wasm"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "sandbox": {
+    "pages": ["sandbox.html"]
+  }
 }

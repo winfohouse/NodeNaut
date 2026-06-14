@@ -53,7 +53,8 @@ export class Messenger {
     try {
       return await chrome.tabs.sendMessage(tabId, request);
     } catch (error: any) {
-      console.error(`Messenger Tab error [${type}] on tab ${tabId}:`, error);
+      // Use warn here as the background script often has resilience/retry logic
+      console.warn(`[FlowPilot] IPC Connection Warning [${type}] on tab ${tabId}: ${error.message}. This may be handled by automatic re-injection.`);
       return {
         success: false,
         error: {
@@ -62,5 +63,25 @@ export class Messenger {
         }
       };
     }
+  }
+
+  /**
+   * Listen for messages in the current context
+   */
+  static listen(handler: (request: ExtRequest) => Promise<ExtResponse | void>) {
+    chrome.runtime.onMessage.addListener((request: ExtRequest, sender, sendResponse) => {
+      handler(request)
+        .then((response) => {
+          if (response) sendResponse(response);
+        })
+        .catch((error) => {
+          console.error('Messenger handler error:', error);
+          sendResponse({
+            success: false,
+            error: { code: 'HANDLER_ERROR', message: error.message }
+          });
+        });
+      return true; // Keep channel open for async response
+    });
   }
 }
