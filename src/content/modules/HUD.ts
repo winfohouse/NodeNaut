@@ -11,6 +11,7 @@ export interface HUDState {
   totalSteps?: number;
   currentRow?: number;
   totalRows?: number;
+  sessionId?: string;
 }
 
 export class FloatingHUD {
@@ -19,6 +20,7 @@ export class FloatingHUD {
   private static toastStack: HTMLDivElement | null = null;
   private static isExpanded = false;
   private static currentState: HUDState = { message: 'Ready', status: 'IDLE', progress: 0 };
+  private static autoCloseTimeout: any = null;
 
   static init() {
     // 1. Strict Singleton: Remove any existing HUD from previous injections
@@ -50,21 +52,23 @@ export class FloatingHUD {
 
     // Event Delegation for buttons
     this.statusElement.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
       const target = e.target as HTMLElement;
       const btn = target.closest('button'); 
       if (!btn) return;
 
       const id = btn.id;
       if (id === 'fp-pause') {
-        Messenger.send(MessageType.WORKFLOW_PAUSE, {});
+        Messenger.send(MessageType.WORKFLOW_PAUSE, { sessionId: this.currentState.sessionId });
       } else if (id === 'fp-resume') {
-        Messenger.send(MessageType.WORKFLOW_RESUME, {});
+        Messenger.send(MessageType.WORKFLOW_RESUME, { sessionId: this.currentState.sessionId });
       } else if (id === 'fp-step') {
-        Messenger.send(MessageType.WORKFLOW_STEP, {});
+        Messenger.send(MessageType.WORKFLOW_STEP, { sessionId: this.currentState.sessionId });
       } else if (id === 'fp-stop') {
-        Messenger.send(MessageType.WORKFLOW_STOP, {});
+        Messenger.send(MessageType.WORKFLOW_STOP, { sessionId: this.currentState.sessionId });
       } else if (id === 'fp-cancel-picker') {
-        chrome.runtime.sendMessage({ type: MessageType.PICKER_STOP });
+        Messenger.send(MessageType.PICKER_STOP, {});
       } else if (id === 'fp-close') {
         this.update({ status: 'IDLE', message: 'Ready', progress: 0, details: '', error: '' });
       }
@@ -80,6 +84,18 @@ export class FloatingHUD {
 
   static update(state: Partial<HUDState>) {
     this.currentState = { ...this.currentState, ...state };
+
+    if (this.autoCloseTimeout) {
+      clearTimeout(this.autoCloseTimeout);
+      this.autoCloseTimeout = null;
+    }
+
+    if (this.currentState.status === 'SUCCESS') {
+      this.autoCloseTimeout = setTimeout(() => {
+        this.update({ status: 'IDLE', message: 'Ready', progress: 0, details: '', error: '' });
+      }, 5000);
+    }
+
     this.render();
   }
 
@@ -92,6 +108,13 @@ export class FloatingHUD {
     if (!this.statusElement) this.init();
     
     const { status, message, progress, details, error, currentStep, totalSteps, currentRow, totalRows } = this.currentState;
+
+    if (status === 'IDLE') {
+      this.statusElement!.style.display = 'none';
+      return;
+    } else {
+      this.statusElement!.style.display = 'block';
+    }
     
     const statusColor = {
       IDLE: '#64748b',
@@ -101,13 +124,13 @@ export class FloatingHUD {
       SUCCESS: '#10b981'
     }[status];
 
-    const isHoverable = status !== 'IDLE';
+    const isHoverable = true;
 
     this.statusElement!.style.borderColor = `${statusColor}44`;
     
     this.statusElement!.innerHTML = `
       <div class="fp-hud-main">
-        <div class="fp-pulse-dot" style="background: ${statusColor}; box-shadow: 0 0 12px ${statusColor}"></div>
+        <div class="fp-pulse-dot ${status === 'RUNNING' || status === 'PAUSED' ? 'pulse' : ''}" style="background: ${statusColor}; box-shadow: 0 0 12px ${statusColor}"></div>
         <div class="fp-hud-content">
           <div class="fp-hud-header">
             <span class="fp-hud-label">${status === 'ERROR' ? 'System Error' : 'FlowPilot Engine'}</span>
@@ -150,7 +173,7 @@ export class FloatingHUD {
     const rect = el.getBoundingClientRect();
     const pulse = document.createElement('div');
     pulse.style.cssText = `
-      position: fixed;
+      position: absolute;
       top: ${rect.top + window.scrollY}px;
       left: ${rect.left + window.scrollX}px;
       width: ${rect.width}px;
@@ -172,8 +195,8 @@ export class FloatingHUD {
     style.id = 'fp-hud-styles';
     style.textContent = `
       .fp-hud-panel {
-        background: rgba(15, 23, 42, 0.95);
-        backdrop-filter: blur(16px);
+        background: #0f172a;
+        backdrop-filter: none;
         color: white;
         padding: 14px 20px;
         border-radius: 20px;
@@ -189,7 +212,7 @@ export class FloatingHUD {
       .fp-hud-panel:hover {
         transform: scale(1.02);
         max-width: 380px;
-        background: rgba(15, 23, 42, 0.98);
+        background: #0f172a;
         box-shadow: 0 35px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.15);
       }
       .fp-hud-main {
@@ -335,6 +358,8 @@ export class FloatingHUD {
         width: 12px;
         height: 12px;
         border-radius: 50%;
+      }
+      .fp-pulse-dot.pulse {
         animation: fp-dot-pulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
       }
       @keyframes fp-dot-pulse {
@@ -351,8 +376,8 @@ export class FloatingHUD {
     const toast = document.createElement('div');
     toast.className = 'fp-toast fade-in';
     toast.style.cssText = `
-      background: rgba(30, 41, 59, 0.85);
-      backdrop-filter: blur(8px);
+      background: #1e293b;
+      backdrop-filter: none;
       color: white;
       padding: 10px 16px;
       border-radius: 12px;

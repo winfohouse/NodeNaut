@@ -12,9 +12,14 @@
     "types": ["chrome"],
     "paths": {
       "$shared/*": ["./src/shared/*"],
-      "$infra/*": ["./src/infra/*"]
+      "$infra/*": ["./src/infra/*"],
+      "$framework/*": ["./src/shared/framework/*"],
+      "$nodes/*": ["./src/nodes/*"],
+      "$background/*": ["./src/background/*"],
+      "$content/*": ["./src/content/*"],
+      "$sidepanel/*": ["./src/sidepanel/*"]
     }
   },
-  "include": ["src/**/*.d.ts", "src/**/*.ts", "src/**/*.svelte"],
+  "include": ["src/**/*.d.ts", "src/**/*.ts", "src/**/*.svelte", "old.WorkflowEditor.svelte"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

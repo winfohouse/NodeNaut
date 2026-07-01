@@ -41,27 +41,30 @@ const GLOBAL_METHODS: AutocompleteSuggestion[] = [
 /**
  * Validates a complex expression string with detailed feedback (CSP Compliant)
  */
-export function validateExpression(str: string): ValidationResult {
-  if (!str) return { isValid: true, message: null };
+export function validateExpression(str: any): ValidationResult {
+  if (str === undefined || str === null) return { isValid: true, message: null };
+  const valStr = String(str);
+  if (!valStr) return { isValid: true, message: null };
 
   // 1. Check for unbalanced curly braces
-  const openBraces = (str.match(/\{/g) || []).length;
-  const closeBraces = (str.match(/\}/g) || []).length;
+  const openBraces = (valStr.match(/\{/g) || []).length;
+  const closeBraces = (valStr.match(/\}/g) || []).length;
   if (openBraces > closeBraces) {
-    return { isValid: false, message: 'Missing closing brace "}".', errorIndex: str.lastIndexOf('{') };
+    return { isValid: false, message: 'Missing closing brace "}".', errorIndex: valStr.lastIndexOf('{') };
   }
   if (closeBraces > openBraces) {
-    return { isValid: false, message: 'Extra closing brace "}".', errorIndex: str.lastIndexOf('}') };
+    return { isValid: false, message: 'Extra closing brace "}".', errorIndex: valStr.lastIndexOf('}') };
   }
 
   // 2. Scan for JS expressions {{ ... }}
-  const jsMatches = Array.from(str.matchAll(/\{\{([^}]+)\}\}/g));
+  const jsMatches = Array.from(valStr.matchAll(/\{\{([^}]+)\}\}/g));
   for (const match of jsMatches) {
     const exp = match[1].trim();
     
     // Allow GLOBAL and $row patterns
-    if (exp.startsWith('GLOBAL.') || exp.startsWith('$row')) {
-      // Basic check for valid identifiers in global path
+    // Enforce strict path checks only if the expression represents a simple path structure
+    const isSimplePath = /^[a-zA-Z0-9_$.\[\]'"\-]+$/.test(exp);
+    if ((exp.startsWith('GLOBAL.') || exp.startsWith('$row')) && isSimplePath) {
       if (!/^[a-zA-Z0-9_$.\[\]]+$/.test(exp)) {
         return { isValid: false, message: `Invalid identifier in path: ${exp}`, errorIndex: match.index };
       }
@@ -76,12 +79,13 @@ export function validateExpression(str: string): ValidationResult {
   }
 
   // 3. Scan for calc expressions calc(...)
-  const calcMatches = Array.from(str.matchAll(/calc\(([^)]+)\)/g));
+  const calcMatches = Array.from(valStr.matchAll(/calc\(([^)]+)\)/g));
   for (const match of calcMatches) {
-    const exp = match[1];
+    const m = match as any;
+    const exp = m[1];
     // Check if it only contains math-safe characters
     if (!/^[0-9+\-*/().\s{}a-zA-Z0-9_\[\]"]+$/.test(exp)) {
-      return { isValid: false, message: 'Calc contains illegal characters. Only math and columns allowed.', errorIndex: match.index };
+      return { isValid: false, message: 'Calc contains illegal characters. Only math and columns allowed.', errorIndex: m.index };
     }
   }
 

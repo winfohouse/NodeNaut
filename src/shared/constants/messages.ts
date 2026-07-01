@@ -24,6 +24,7 @@ export enum MessageType {
   DOM_INTERACT = 'DOM_INTERACT',
   DOM_EVAL = 'DOM_EVAL',
   DOM_WAIT_STABILITY = 'DOM_WAIT_STABILITY',
+  DOM_GET_SPEC = 'DOM_GET_SPEC',
   
   // HUD & UI
   HUD_UPDATE = 'HUD_UPDATE',
@@ -44,6 +45,9 @@ export enum MessageType {
 
   // SPA Tracking
   SPA_NAVIGATED = 'SPA_NAVIGATED',
+
+  // Navigation
+  NAVIGATE = 'NAVIGATE',
 
   // Picker Intelligence
   PICKER_START = 'PICKER_START',

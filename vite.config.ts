@@ -36,6 +36,11 @@ export default defineConfig(({ mode }) => {
       alias: {
         $shared: resolve(__dirname, 'src/shared'),
         $infra: resolve(__dirname, 'src/infra'),
+        $framework: resolve(__dirname, 'src/shared/framework'),
+        $nodes: resolve(__dirname, 'src/nodes'),
+        $background: resolve(__dirname, 'src/background'),
+        $content: resolve(__dirname, 'src/content'),
+        $sidepanel: resolve(__dirname, 'src/sidepanel'),
       },
     },
   }

@@ -66,6 +66,51 @@ export class Messenger {
   }
 
   /**
+   * Broadcast a message to all frames of a specific tab and return the first successful response.
+   */
+  static async broadcastToTab<P = any, R = any>(tabId: number, type: MessageType, payload: P): Promise<ExtResponse<R>> {
+    const request: ExtRequest<P> = {
+      id: crypto.randomUUID(),
+      type,
+      payload
+    };
+
+    try {
+      const frames = await chrome.webNavigation.getAllFrames({ tabId });
+      if (!frames || frames.length === 0) {
+        return await chrome.tabs.sendMessage(tabId, request);
+      }
+
+      const promises = frames.map(async (frame) => {
+        try {
+          return await chrome.tabs.sendMessage(tabId, request, { frameId: frame.frameId });
+        } catch (err: any) {
+          return { success: false, error: { code: 'IPC_FRAME_ERROR', message: err.message } };
+        }
+      });
+
+      const results = await Promise.all(promises);
+      const successResult = results.find(r => r && r.success);
+      if (successResult) return successResult;
+
+      const failureResult = results.find(r => r && !r.success && r.error?.code !== 'IPC_FRAME_ERROR');
+      return failureResult || results[0] || { success: false, error: { code: 'NOT_FOUND', message: 'No frame responded successfully' } };
+    } catch (error: any) {
+      try {
+        return await chrome.tabs.sendMessage(tabId, request);
+      } catch (fallbackError: any) {
+        return {
+          success: false,
+          error: {
+            code: 'IPC_TAB_ERROR',
+            message: fallbackError.message || 'Unknown IPC tab error'
+          }
+        };
+      }
+    }
+  }
+
+  /**
    * Listen for messages in the current context
    */
   static listen(handler: (request: ExtRequest) => Promise<ExtResponse | void>) {

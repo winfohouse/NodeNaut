@@ -234,36 +234,36 @@
   :global(:root) {
     /* Obsidian Mood (Default - Elite Dark) */
     --bg-app: #020617;
-    --bg-surface: rgba(15, 23, 42, 0.6);
+    --bg-surface: #0f172a;
     --bg-surface-solid: #0f172a;
-    --bg-card: rgba(30, 41, 59, 0.4);
-    --bg-card-hover: rgba(30, 41, 59, 0.6);
+    --bg-card: #1e293b;
+    --bg-card-hover: #334155;
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
     --accent: #3b82f6;
-    --accent-glow: rgba(59, 130, 246, 0.5);
+    --accent-glow: #1e3a8a;
     --border-ui: rgba(255, 255, 255, 0.05);
     --border-ui-heavy: rgba(255, 255, 255, 0.1);
     --status-success: #10b981;
     --status-error: #ef4444;
     --status-warning: #f59e0b;
     --node-anim: n-obsidian;
-    --glass-blur: 20px;
+    --glass-blur: 0px;
     --shadow-elite: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
   }
 
   :global(.mood-crystal) {
     --bg-app: #f8fafc;
-    --bg-surface: rgba(255, 255, 255, 0.8);
+    --bg-surface: #ffffff;
     --bg-surface-solid: #ffffff;
-    --bg-card: rgba(255, 255, 255, 0.5);
-    --bg-card-hover: rgba(255, 255, 255, 0.8);
+    --bg-card: #f1f5f9;
+    --bg-card-hover: #e2e8f0;
     --text-primary: #0f172a;
     --text-secondary: #475569;
     --text-muted: #94a3b8;
     --accent: #2563eb;
-    --accent-glow: rgba(37, 99, 235, 0.2);
+    --accent-glow: #dbeafe;
     --border-ui: rgba(0, 0, 0, 0.05);
     --border-ui-heavy: rgba(0, 0, 0, 0.1);
     --status-success: #059669;
@@ -275,15 +275,15 @@
 
   :global(.mood-synthwave) {
     --bg-app: #09090b;
-    --bg-surface: rgba(20, 20, 25, 0.8);
+    --bg-surface: #121214;
     --bg-surface-solid: #121214;
-    --bg-card: rgba(20, 20, 25, 0.4);
-    --bg-card-hover: rgba(20, 20, 25, 0.6);
+    --bg-card: #1a1a1e;
+    --bg-card-hover: #242429;
     --text-primary: #ec4899;
     --text-secondary: #f472b6;
     --text-muted: #701a75;
     --accent: #ec4899;
-    --accent-glow: rgba(236, 72, 153, 0.6);
+    --accent-glow: #4a044e;
     --border-ui: rgba(236, 72, 153, 0.2);
     --border-ui-heavy: rgba(236, 72, 153, 0.4);
     --node-anim: n-synth;
@@ -291,15 +291,15 @@
 
   :global(.mood-nebula) {
     --bg-app: #0f0b1e;
-    --bg-surface: rgba(31, 23, 64, 0.4);
+    --bg-surface: #1f1740;
     --bg-surface-solid: #1f1740;
-    --bg-card: rgba(31, 23, 64, 0.2);
-    --bg-card-hover: rgba(31, 23, 64, 0.4);
+    --bg-card: #2b1e5a;
+    --bg-card-hover: #3b2a7c;
     --text-primary: #c084fc;
     --text-secondary: #d8b4fe;
     --text-muted: #581c87;
     --accent: #c084fc;
-    --accent-glow: rgba(192, 132, 252, 0.5);
+    --accent-glow: #3b0764;
     --border-ui: rgba(192, 132, 252, 0.1);
     --border-ui-heavy: rgba(192, 132, 252, 0.3);
     --node-anim: n-nebula;

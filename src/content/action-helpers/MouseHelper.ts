@@ -6,7 +6,12 @@ import type { ExtResponse } from '$shared/api/messenger';
 export class MouseHelper {
   static async click(el: HTMLElement): Promise<ExtResponse> {
     try {
-      el.click();
+      const href = el.getAttribute('href');
+      if (href && href.toLowerCase().startsWith('javascript:')) {
+        el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+      } else {
+        el.click();
+      }
       return { success: true };
     } catch (e: any) {
       return { success: false, error: { code: 'CLICK_FAILED', message: e.message } };

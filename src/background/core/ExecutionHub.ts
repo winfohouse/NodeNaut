@@ -1,19 +1,25 @@
 import { db } from '$shared/services/db';
-import { FlowPilotRegistry } from '$shared/framework/Registry';
-import type { ExecutionContext, NodeResult } from '$shared/framework/NodePlugin';
+import { FlowPilotRegistry } from '$framework/Registry';
+import type { 
+  ExecutionContext, 
+  NodeResult, 
+  NodePlugin, 
+  ExecutionError, 
+  ElementDiscovery,
+  MessengerService
+} from '$framework/NodePlugin';
 import { Messenger } from '$shared/api/messenger';
 import { MessageType } from '$shared/constants/messages';
-import { ResilientTabSender } from './ResilientTabSender';
-import { SandboxService } from './SandboxService';
+import { ResilientTabSender } from '$background/core/ResilientTabSender';
+import { SandboxService } from '$background/core/SandboxService';
 import { VaultService } from '$shared/services/vault';
 
 export class ExecutionHub {
   private static instance: ExecutionHub;
-  private activeSessions = new Map<string, any>();
+  private activeSessions = new Map<string, Record<string, unknown>>();
   private registry = FlowPilotRegistry.getInstance();
 
   private constructor() {
-    // Initial discovery
     FlowPilotRegistry.discoverPlugins();
   }
 
@@ -34,7 +40,7 @@ export class ExecutionHub {
     const nodeData = workflow.graph?.nodes.find((n: any) => n.id === nodeId);
     if (!nodeData) return;
 
-    const plugin = this.registry.getPlugin(nodeData.type);
+    const plugin = this.registry.getPlugin(nodeData.type) as NodePlugin | undefined;
     if (!plugin) {
       console.error(`[ExecutionHub] No plugin found for type: ${nodeData.type}`);
       return;
@@ -53,12 +59,13 @@ export class ExecutionHub {
         await this.handleError(session, nodeData, result, plugin, context);
       }
     } catch (e: any) {
-      await this.handleError(session, nodeData, { success: false, error: { code: 'CRASH', message: e.message } }, plugin, context);
+      const error: ExecutionError = { code: 'CRASH', message: e.message || 'Node execution crashed' };
+      await this.handleError(session, nodeData, { success: false, error }, plugin, context);
     }
   }
 
   private async createContext(session: any, nodeData: any): Promise<ExecutionContext> {
-    const rowData = session.variables || {}; // Logic for batch data row selection goes here
+    const rowData = (session.variables as Record<string, unknown>) || {};
 
     return {
       node: {
@@ -67,33 +74,48 @@ export class ExecutionHub {
         tabId: session.tab_id
       },
       services: {
-        dom: {
-          // Future: scoped DOM utils based on permissions
-        },
-        messenger: Messenger,
+        dom: {},
+        messenger: Messenger as unknown as MessengerService,
         vault: VaultService,
-        sandbox: SandboxService.getInstance()
-      },
-      vars: {
-        get: async (key) => rowData[key],
-        set: async (key, val) => {
-          rowData[key] = val;
-          await db.execution_sessions.update(session.id, { variables: rowData });
-        },
-        resolve: async (str) => {
-          // Future: use existing processExpression logic
-          return str; 
+        sandbox: SandboxService.getInstance(),
+        picker: {
+          start: async (mode = 'step'): Promise<ElementDiscovery> => {
+            const response = await ResilientTabSender.send(session.tab_id, MessageType.PICKER_START, { mode });
+            if (!response.success) throw new Error(response.error?.message || 'Picker failed');
+            
+            return new Promise((resolve) => {
+              const listener = (msg: any) => {
+                if (msg.type === MessageType.PICKER_SELECT) {
+                  chrome.runtime.onMessage.removeListener(listener);
+                  resolve(msg.payload as ElementDiscovery);
+                }
+              };
+              chrome.runtime.onMessage.addListener(listener);
+            });
+          },
+          scan: async (): Promise<ElementDiscovery[]> => {
+            const response = await ResilientTabSender.send(session.tab_id, MessageType.DOM_SCAN, {});
+            return response.success ? (response.data as ElementDiscovery[]) : [];
+          }
         }
       },
+      vars: {
+        get: async <V>(key: string): Promise<V> => rowData[key] as V,
+        set: async <V>(key: string, val: V): Promise<void> => {
+          rowData[key] = val as any;
+          await db.execution_sessions.update(session.id, { variables: rowData });
+        },
+        resolve: async (str: string) => str // TODO: Implement expression engine resolution
+      },
       logger: {
-        info: (m, d) => console.log(`[Node:${nodeData.id}] ${m}`, d),
-        warn: (m, d) => console.warn(`[Node:${nodeData.id}] ${m}`, d),
-        error: (m, d) => console.error(`[Node:${nodeData.id}] ${m}`, d)
+        info: (m: string, d?: Record<string, unknown>) => console.log(`[Node:${nodeData.id}] ${m}`, d),
+        warn: (m: string, d?: Record<string, unknown>) => console.warn(`[Node:${nodeData.id}] ${m}`, d),
+        error: (m: string, d?: Record<string, unknown>) => console.error(`[Node:${nodeData.id}] ${m}`, d)
       },
       runtime: {
         pause: () => db.execution_sessions.update(session.id, { status: 'PAUSED' }),
         stop: () => db.execution_sessions.delete(session.id),
-        next: (port) => { /* Logical jump logic */ }
+        next: (port: string) => {}
       }
     };
   }
@@ -117,19 +139,18 @@ export class ExecutionHub {
       await db.execution_sessions.put(session);
       this.runNode(session.id, nextNodeId);
     } else {
-      // Workflow Complete
       await db.execution_sessions.delete(session.id);
     }
   }
 
-  private async handleError(session: any, nodeData: any, result: any, plugin: any, context: any) {
+  private async handleError(session: any, nodeData: any, result: NodeResult, plugin: NodePlugin, context: ExecutionContext) {
     if (plugin.recover) {
-      const recovered = await plugin.recover(result.error, context);
-      if (recovered) return; // Handler already resumed or handled
+      const recovered = await plugin.recover(result.error!, context);
+      if (recovered) return;
     }
-    
-    // Default error handling: Log and stop
-    console.error(`[ExecutionHub] Node ${nodeData.id} failed:`, result.error);
-    await db.execution_sessions.update(session.id, { status: 'FAILED' });
+    await db.execution_sessions.update(session.id, { 
+      status: 'FAILED',
+      error: result.error?.message || 'Unknown node error'
+    });
   }
 }

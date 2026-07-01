@@ -6,7 +6,7 @@ export class ResilientTabSender {
    * Sends a message to a tab with automatic content script re-injection on failure.
    */
   static async send(tabId: number, type: MessageType, payload: any): Promise<ExtResponse> {
-    let response = await Messenger.sendToTab(tabId, type, payload);
+    let response = await Messenger.broadcastToTab(tabId, type, payload);
 
     const isConnectionError = 
       !response.success && 
@@ -42,7 +42,7 @@ export class ResilientTabSender {
         
         for (let attempt = 0; attempt < 5; attempt++) {
           await new Promise(r => setTimeout(r, 200 * (attempt + 1))); // Incremental backoff
-          const ping = await Messenger.sendToTab(tabId, PING_TYPE, {});
+          const ping = await Messenger.broadcastToTab(tabId, PING_TYPE, {});
           if (ping.success && ping.data === 'PONG') {
             isReady = true;
             break;
@@ -55,7 +55,7 @@ export class ResilientTabSender {
         }
 
         // Retry the original message
-        response = await Messenger.sendToTab(tabId, type, payload);
+        response = await Messenger.broadcastToTab(tabId, type, payload);
         
         if (response.success) {
           console.info(`[FlowPilot] Resilient connection RE-ESTABLISHED on tab ${tabId} for ${type}`);

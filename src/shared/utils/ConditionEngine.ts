@@ -14,7 +14,7 @@ export interface ConditionRule {
   selector?: string;
   selectorLabel?: string;
   candidates?: any[];
-  spec?: any;
+  spec?: Record<string, unknown>;
   value1?: string; 
   value2?: string; 
 }

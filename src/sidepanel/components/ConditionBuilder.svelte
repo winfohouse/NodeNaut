@@ -109,6 +109,10 @@
   function needsValue2(type: string) {
     return type.startsWith('var_equals') || type.startsWith('var_contains') || type.startsWith('num_');
   }
+
+  function asRule(c: any): ConditionRule {
+    return c as ConditionRule;
+  }
 </script>
 
 <div class="group-container" class:root={depth === 0}>
@@ -142,8 +146,9 @@
             onChange={onChange}
           />
         {:else}
+          {@const rule = asRule(cond)}
           <div class="rule-container glass">
-            <select class="rule-type-select" bind:value={cond.ruleType} on:change={onChange}>
+            <select class="rule-type-select" bind:value={rule.ruleType} on:change={onChange}>
               {#each ruleOptions as category}
                 <optgroup label={category.label}>
                   {#each category.options as opt}
@@ -154,21 +159,21 @@
             </select>
 
             <div class="rule-inputs">
-              {#if needsSelector(cond.ruleType)}
+              {#if needsSelector(rule.ruleType)}
                 <button class="icon-btn picker-btn" on:click={() => handlePicker(index)} title="Pick Target Element">
                   <MousePointer2 size={12} />
                 </button>
                 <div class="selector-input-shell" style="flex: 1; position: relative;">
-                  <input type="text" class="val-input selector-input" placeholder="CSS/XPath Selector..." bind:value={cond.selector} on:change={onChange} />
-                  {#if cond.candidates?.length}
+                  <input type="text" class="val-input selector-input" placeholder="CSS/XPath Selector..." bind:value={rule.selector} on:change={onChange} />
+                  {#if rule.candidates?.length}
                     <div class="selector-stack-popover">
                       <button class="shield-btn" title="Tune Resilience Stack">
                         <ShieldCheck size={12} />
-                        <span>{cond.candidates.length} Fallbacks</span>
+                        <span>{rule.candidates.length} Fallbacks</span>
                       </button>
                       <div class="stack-dropdown glass">
                         <div class="stack-header">Resilience Hierarchy</div>
-                        {#each cond.candidates as cand, ci}
+                        {#each rule.candidates as cand, ci}
                           <div class="stack-item">
                             <select class="cand-type-select" bind:value={cand.type} on:change={onChange}>
                               <option value="ID">ID</option>
@@ -185,36 +190,36 @@
                               <span>#</span>
                               <input type="number" class="idx-inp" bind:value={cand.index} min="0" on:change={onChange} />
                             </div>
-                            <button class="cand-del" on:click={() => { cond.candidates.splice(ci, 1); cond.candidates = cond.candidates; onChange(); }}><Plus size={10} style="transform: rotate(45deg)" /></button>
+                            <button class="cand-del" on:click={() => { if (rule.candidates) { rule.candidates.splice(ci, 1); rule.candidates = rule.candidates; onChange(); } }}><Plus size={10} style="transform: rotate(45deg)" /></button>
                           </div>
                         {/each}
-                        <button class="add-cand" on:click={() => { cond.candidates = [...(cond.candidates || []), { type: 'XPATH', selector: '', confidence: 10 }]; onChange(); }}><Plus size={10} /> Add Fallback</button>
+                        <button class="add-cand" on:click={() => { rule.candidates = [...(rule.candidates || []), { type: 'XPATH', selector: '', confidence: 10 }]; onChange(); }}><Plus size={10} /> Add Fallback</button>
                       </div>
                     </div>
                   {/if}
                 </div>
-                {#if highlightSelector && cond.selector}
-                  <button class="icon-btn" on:click={() => highlightSelector && highlightSelector(cond.selector || '')} title="Locate on page">
+                {#if highlightSelector && rule.selector}
+                  <button class="icon-btn" on:click={() => highlightSelector && highlightSelector(rule.selector || '')} title="Locate on page">
                     <Search size={12} />
                   </button>
                 {/if}
               {/if}
 
-              {#if cond.ruleType.startsWith('var_') || cond.ruleType.startsWith('num_')}
-                <input type="text" class="val-input" placeholder="Variable (e.g. &#123;Price&#125;)" bind:value={cond.value1} on:change={onChange} />
+              {#if rule.ruleType.startsWith('var_') || rule.ruleType.startsWith('num_')}
+                <input type="text" class="val-input" placeholder="Variable (e.g. &#123;Price&#125;)" bind:value={rule.value1} on:change={onChange} />
               {/if}
 
-              {#if needsValue1(cond.ruleType) && !cond.ruleType.startsWith('var_') && !cond.ruleType.startsWith('num_')}
-                <input type="text" class="val-input" placeholder="Expected Value..." bind:value={cond.value1} on:change={onChange} />
+              {#if needsValue1(rule.ruleType) && !rule.ruleType.startsWith('var_') && !rule.ruleType.startsWith('num_')}
+                <input type="text" class="val-input" placeholder="Expected Value..." bind:value={rule.value1} on:change={onChange} />
               {/if}
 
-              {#if needsValue2(cond.ruleType)}
+              {#if needsValue2(rule.ruleType)}
                 <span class="compare-label">Expected:</span>
-                <input type="text" class="val-input" placeholder="Expected Value..." bind:value={cond.value2} on:change={onChange} />
+                <input type="text" class="val-input" placeholder="Expected Value..." bind:value={rule.value2} on:change={onChange} />
               {/if}
 
               {#if testRule}
-                <button class="icon-btn test-btn" on:click={() => testRule && testRule(cond)} title="Test this specific rule">
+                <button class="icon-btn test-btn" on:click={() => testRule && testRule(rule)} title="Test this specific rule">
                   <Play size={12} />
                 </button>
               {/if}

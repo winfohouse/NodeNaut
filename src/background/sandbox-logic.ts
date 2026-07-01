@@ -16,7 +16,13 @@
     }
 
     if (type?.endsWith('_RES')) return;
-    if (!id || !code) return;
+    if (!id) return; // ID is required for routing
+
+    if (!code || code.trim() === '') {
+      console.warn('[FlowPilot] Sandbox received empty script, returning success.');
+      window.parent.postMessage({ type: 'FP_SCRIPT_DONE', id, success: true, data: null }, '*');
+      return;
+    }
 
     console.log('[FlowPilot] Sandbox executing script:', id);
 

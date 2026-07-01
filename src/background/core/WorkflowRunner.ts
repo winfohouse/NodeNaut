@@ -1,10 +1,12 @@
 import { db, type WorkflowContext } from '$shared/services/db';
-import { Messenger } from '$shared/api/messenger';
+import { Messenger, type ExtResponse } from '$shared/api/messenger';
 import { MessageType } from '$shared/constants/messages';
 import { VaultService } from '$shared/services/vault';
 import { ResilientTabSender } from './ResilientTabSender';
 import { SandboxService } from './SandboxService';
 import { ConditionEngine } from '$shared/utils/ConditionEngine';
+import { FlowPilotRegistry } from '$framework/Registry';
+import type { NodePlugin, ExecutionContext, NodeResult, MessengerService, DiscoveryServiceCapability } from '$framework/NodePlugin';
 
 interface ExecutionSession {
   id: string;
@@ -23,6 +25,7 @@ export class WorkflowRunner {
   private sessions: Map<string, ExecutionSession> = new Map();
   private MAX_RETRIES = 3;
   private sandboxService = SandboxService.getInstance();
+  private registry = FlowPilotRegistry.getInstance();
 
   private constructor() {
     this.rehydrate();
@@ -33,6 +36,46 @@ export class WorkflowRunner {
       WorkflowRunner.instance = new WorkflowRunner();
     }
     return WorkflowRunner.instance;
+  }
+
+  private async createExecutionContext(sessionId: string, node: any, rowData: any): Promise<ExecutionContext<any>> {
+    const session = this.sessions.get(sessionId)!;
+    
+    return {
+      node: {
+        id: node.id,
+        state: node.state || {},
+        tabId: session.tabId
+      },
+      services: {
+        dom: {}, 
+        messenger: {
+          send: (type, payload) => Messenger.send(type as any, payload),
+          sendToTab: (tabId, type, payload) => ResilientTabSender.send(tabId, type as any, payload)
+        } as MessengerService,
+        vault: VaultService,
+        sandbox: this.sandboxService,
+        picker: {
+          start: async () => ({}) as any,
+          scan: async () => []
+        } as DiscoveryServiceCapability
+      },
+      vars: {
+        get: async (key) => key === 'all' ? rowData : rowData[key],
+        set: async (key, value) => { rowData[key] = value; },
+        resolve: (str) => this.processExpression(str, rowData)
+      },
+      logger: {
+        info: (msg, data) => console.log(`[Node:${node.type}] ${msg}`, data),
+        warn: (msg, data) => console.warn(`[Node:${node.type}] ${msg}`, data),
+        error: (msg, data) => console.error(`[Node:${node.type}] ${msg}`, data)
+      },
+      runtime: {
+        pause: () => this.pause(sessionId),
+        stop: () => this.stop(sessionId),
+        next: (port) => {} // Handled by engine
+      }
+    };
   }
 
   private async rehydrate() {
@@ -60,7 +103,14 @@ export class WorkflowRunner {
     }
   }
 
-  async start(workflowId: string, options: { tabId?: number; parentSessionId?: string; rowData?: any; startNodeId?: string } = {}): Promise<ExtResponse> {
+  async start(workflowId: string, options: { 
+    tabId?: number; 
+    parentSessionId?: string; 
+    rowData?: any; 
+    startNodeId?: string;
+    inheritedStepCount?: number;
+    inheritedRowIndex?: number;
+  } = {}): Promise<ExtResponse> {
     const workflow = await db.workflows.get(workflowId);
     if (!workflow) return { success: false, error: { code: 'WORKFLOW_NOT_FOUND', message: 'Workflow not found' } };
 
@@ -87,7 +137,7 @@ export class WorkflowRunner {
       workflow_id: workflowId,
       tab_id: targetTabId,
       current_node_id: startNodeId,
-      current_step_index: 0,
+      current_step_index: options.inheritedStepCount || 0,
       status: 'RUNNING',
       variables: {},
       last_updated: Date.now(),
@@ -95,7 +145,7 @@ export class WorkflowRunner {
     };
 
     let batchData = null;
-    let rowIndex = 0;
+    let rowIndex = options.inheritedRowIndex || 0;
 
     if (workflow.settings?.table_id && !options.rowData) {
       const table = await db.data_tables.get(workflow.settings.table_id);
@@ -111,7 +161,7 @@ export class WorkflowRunner {
       retryCount: 0,
       isProcessing: false,
       isWaiting: false,
-      stepCount: 0
+      stepCount: options.inheritedStepCount || 0
     };
 
     this.sessions.set(sessionId, session);
@@ -128,7 +178,7 @@ export class WorkflowRunner {
     });
     
     this.executeNextStep(sessionId);
-    return { success: true, sessionId };
+    return { success: true, data: { sessionId } };
   }
 
   private async notifyHUDFull(sessionId: string, state: Partial<any>) {
@@ -160,7 +210,7 @@ export class WorkflowRunner {
         }
       }
 
-      await ResilientTabSender.send(tabId, 'HUD_UPDATE' as any, state);
+      await ResilientTabSender.send(tabId, 'HUD_UPDATE' as any, { ...state, sessionId });
     }
   }
 
@@ -293,112 +343,25 @@ export class WorkflowRunner {
       }
 
       const rowData = session.currentBatchData ? session.currentBatchData[session.currentRowIndex] : {};
-      const actionToExecute = await this.resolveVariables(currentAction, rowData);
+      const plugin = this.registry.getPlugin(currentAction.type);
 
       await this.notifyHUDFull(sessionId, { 
-        message: `Executing: ${actionToExecute.type}`,
+        message: `Executing: ${currentAction.metadata?.label || currentAction.type}`,
         status: 'RUNNING'
       });
 
-      let stepResult: any;
-      switch (actionToExecute.type) {
-        case 'CLICK':
-          stepResult = await ResilientTabSender.send(session.tabId, MessageType.DOM_CLICK, actionToExecute);
-          break;
-        case 'TYPE':
-          stepResult = await ResilientTabSender.send(session.tabId, MessageType.DOM_FILL, actionToExecute);
-          break;
-        case 'INTERACT':
-          stepResult = await ResilientTabSender.send(session.tabId, MessageType.DOM_INTERACT, {
-            ...actionToExecute,
-            action: actionToExecute.interactType,
-            metadata: actionToExecute.metadata
-          });
-          break;
-        case 'NAVIGATE':
-          stepResult = await this.handleNavigation(session.tabId, actionToExecute.url);
-          break;
-        case 'WAIT_UNTIL':
-          await this.handleWaitUntil(sessionId, actionToExecute.value, rowData);
-          return; 
-        case 'SPAWN':
-          stepResult = await this.handleSpawn(sessionId, actionToExecute);
-          break;
-        case 'CLOSE_TAB':
-          stepResult = await this.handleCloseTab(sessionId);
-          break;
-        case 'SCRIPT':
-          stepResult = await this.sandboxService.execute({ code: actionToExecute.value, data: rowData, tableId: settings?.table_id });
-          break;
-        case 'IF_BRANCH':
-          let model = actionToExecute.metadata?.conditionModel;
-          
-          // Auto-upgrade legacy IF_BRANCH actions
-          if (!model) {
-            model = ConditionEngine.createDefaultModel();
-            model.mode = 'CUSTOM';
-            model.customCode = actionToExecute.value || 'false';
-          }
+      let stepResult: NodeResult;
 
-          let timeoutMs = model.timeout || 0;
-          let pollMs = model.poll || 500;
-          let isTrue = false;
-          let elapsed = 0;
-
-          while (true) {
-            let evalResponse: any;
-            
-            if (model.mode === 'BUILDER') {
-              // RESOLVE: Deep resolve variables in the model before sending to tab
-              const resolvedModel = JSON.parse(JSON.stringify(model));
-              const resolveInGroup = async (group: any) => {
-                if (!group.conditions) return;
-                for (const c of group.conditions) {
-                  if (c.type === 'group') await resolveInGroup(c);
-                  else {
-                    if (c.value1) c.value1 = await this.processExpression(c.value1, rowData);
-                    if (c.value2) c.value2 = await this.processExpression(c.value2, rowData);
-                    if (c.selector) c.selector = await this.processExpression(c.selector, rowData);
-                  }
-                }
-              };
-              await resolveInGroup(resolvedModel.rootGroup);
-              
-              // CRITICAL: Send model to bypass CSP
-              evalResponse = await ResilientTabSender.send(session.tabId, MessageType.DOM_EVAL, { model: resolvedModel });
-            } else {
-              // Custom JS mode
-              const codeToEval = await this.processExpression(model.customCode || 'false', rowData);
-              const needsTab = codeToEval.includes('querySelectorDeep') || codeToEval.includes('isVisible') || codeToEval.includes('findElement');
-              
-              if (needsTab) {
-                evalResponse = await ResilientTabSender.send(session.tabId, MessageType.DOM_EVAL, { code: codeToEval });
-              } else {
-                evalResponse = await this.sandboxService.execute({
-                  code: `return (${codeToEval})`,
-                  data: rowData
-                });
-              }
-            }
-
-            if (evalResponse.success && (evalResponse.data === true || evalResponse.data === 'true')) {
-              isTrue = true;
-              break;
-            }
-
-            if (elapsed >= timeoutMs) break;
-
-            await new Promise(r => setTimeout(r, pollMs));
-            elapsed += pollMs;
-          }
-
-          stepResult = { success: true, branchResult: isTrue };
-          break;
-        default:
-          stepResult = { success: true };
+      if (plugin) {
+        const execCtx = await this.createExecutionContext(sessionId, currentAction, rowData);
+        stepResult = await plugin.execute(execCtx);
+      } else {
+        // Fallback for legacy actions or unregistered types
+        console.warn(`[Kernel] No plugin found for type: ${currentAction.type}. Using legacy fallback.`);
+        stepResult = await this.legacyExecute(sessionId, currentAction, rowData);
       }
 
-      if (stepResult?.success) {
+      if (stepResult.success) {
         context.last_updated = Date.now();
         session.stepCount++;
         context.current_step_index = session.stepCount; 
@@ -412,36 +375,34 @@ export class WorkflowRunner {
             context.current_node_id = undefined;
           } else {
             let nextNodeId: string | undefined;
+            const targetPort = stepResult.nextPort || 'success';
+            const possibleEdges = outgoingEdges.filter((e: any) => e.type === targetPort);
 
-            if (currentAction.type === 'IF_BRANCH') {
-              const targetType = stepResult.branchResult ? 'MAIN' : 'ALT';
-              const branchEdge = outgoingEdges.find((e: any) => e.type === targetType);
-              nextNodeId = branchEdge?.targetNodeId;
+            if (possibleEdges.length === 0) {
+              context.current_node_id = undefined;
             } else {
-              const mainEdge = outgoingEdges.find((e: any) => e.type === 'MAIN') || outgoingEdges[0];
+              const mainEdge = possibleEdges.find((e: any) => e.mode === 'MAIN') || possibleEdges[0];
               nextNodeId = mainEdge.targetNodeId;
-              
-              const branches = outgoingEdges.filter((e: any) => e.id !== mainEdge.id);
-              for (const edge of branches) {
+
+              const parallels = possibleEdges.filter((e: any) => e.id !== mainEdge.id);
+              for (const edge of parallels) {
                 await this.spawnParallelBranch(
                   context.workflow_id, 
                   edge.targetNodeId, 
                   sessionId, 
-                  rowData,
-                  edge.type || 'CLONE'
+                  rowData, 
+                  edge.mode || 'CLONE'
                 );
               }
+              context.current_node_id = nextNodeId;
             }
-            context.current_node_id = nextNodeId;
           }
         } else {
-          if (context.current_step_index !== undefined) {
-             context.current_step_index++;
-          }
+          if (context.current_step_index !== undefined) context.current_step_index++;
         }
 
         await db.execution_sessions.put(context);
-
+        
         if ((session as any).stepMode) {
           (session as any).stepMode = false;
           await this.pause(sessionId);
@@ -449,13 +410,7 @@ export class WorkflowRunner {
           setTimeout(() => this.executeNextStep(sessionId), 500);
         }
       } else {
-        if (session.retryCount < this.MAX_RETRIES) {
-          session.retryCount++;
-          session.isProcessing = false;
-          setTimeout(() => this.executeNextStep(sessionId), 1000 * session.retryCount);
-        } else {
-          await this.completeWorkflow(sessionId, 'FAILED', stepResult?.error?.message || 'Step failed');
-        }
+        await this.handleError(context, currentAction, stepResult, plugin, sessionId);
       }
     } catch (e: any) {
       await this.completeWorkflow(sessionId, 'FAILED', e.message);
@@ -484,25 +439,44 @@ export class WorkflowRunner {
   }
 
   private async spawnParallelBranch(workflowId: string, startNodeId: string, parentSessionId: string, rowData: any, mode: 'CLONE' | 'FRESH' = 'CLONE') {
-    let tab: chrome.tabs.Tab;
-    
-    if (mode === 'CLONE') {
-      const parentSession = this.sessions.get(parentSessionId);
-      if (parentSession?.tabId) {
+    let tab: chrome.tabs.Tab | undefined;
+    const parentSession = this.sessions.get(parentSessionId);
+    const workflow = await db.workflows.get(workflowId);
+
+    // Resolve technical workflow state to peek at node type
+    const { graph } = await this.resolveWorkflowData(workflow);
+    const targetNode = graph?.nodes?.find((n: any) => n.id === startNodeId);
+    const isNavigation = targetNode?.type === 'NAVIGATE';
+    const targetUrl = isNavigation ? await this.processExpression(targetNode.state?.url || targetNode.url || '', rowData) : null;
+
+    if (mode === 'CLONE' && parentSession?.tabId) {
+      if (isNavigation && targetUrl) {
+        // INTELLIGENT: If branch starts with navigation, don't duplicate; just create at target
+        tab = await chrome.tabs.create({ url: targetUrl, active: false });
+      } else {
+        // CLONE: Duplicate to preserve exact DOM state, cookies, and scroll position
         try {
           tab = await chrome.tabs.duplicate(parentSession.tabId);
         } catch (e) {
           tab = await chrome.tabs.create({ url: 'about:blank', active: false });
         }
-      } else {
-        tab = await chrome.tabs.create({ url: 'about:blank', active: false });
       }
     } else {
-      tab = await chrome.tabs.create({ url: 'about:blank', active: false });
+      // FRESH: Start in a clean background tab
+      const finalUrl = isNavigation && targetUrl ? targetUrl : 'about:blank';
+      tab = await chrome.tabs.create({ url: finalUrl, active: false });
     }
 
     if (tab?.id) {
-      await this.start(workflowId, { tabId: tab.id, parentSessionId, startNodeId, rowData });
+      // CONTEXT INHERITANCE: Pass parent progress to keep HUD/Logs continuous
+      await this.start(workflowId, { 
+        tabId: tab.id, 
+        parentSessionId, 
+        startNodeId, 
+        rowData,
+        inheritedStepCount: parentSession?.stepCount || 0,
+        inheritedRowIndex: parentSession?.currentRowIndex || 0
+      });
     }
   }
 
@@ -661,13 +635,60 @@ export class WorkflowRunner {
     const session = this.sessions.get(sessionId);
     if (session) {
       await this.log(session.workflowId, status as any, message);
-      await this.notifyHUDFull(sessionId, { message, status: status === 'SUCCESS' ? 'SUCCESS' : 'ERROR', progress: 100 });
-      await db.execution_sessions.delete(sessionId);
+      await this.notifyHUDFull(sessionId, { 
+        message, 
+        status: status === 'SUCCESS' ? 'SUCCESS' : 'ERROR', 
+        error: status === 'FAILED' ? message : undefined,
+        progress: 100 
+      });
+
+      if (status === 'FAILED') {
+        await db.execution_sessions.update(sessionId, { 
+          status: 'FAILED',
+          error: message,
+          last_updated: Date.now()
+        });
+      } else {
+        await db.execution_sessions.delete(sessionId);
+      }
+      
       this.sessions.delete(sessionId);
     }
   }
 
   private async log(workflowId: string, status: 'SUCCESS' | 'ERROR' | 'PENDING' | 'RUNNING', message: string, details?: any) {
     await db.execution_logs.add({ workflow_id: workflowId, status, message, details, timestamp: Date.now() });
+  }
+
+  private async handleError(context: WorkflowContext, nodeData: any, result: NodeResult, plugin: NodePlugin | undefined, sessionId: string) {
+    if (plugin?.recover) {
+      const execCtx = await this.createExecutionContext(sessionId, nodeData, {});
+      const recovered = await plugin.recover(result.error!, execCtx);
+      if (recovered) return;
+    }
+    
+    if (this.sessions.get(sessionId)!.retryCount < this.MAX_RETRIES) {
+      this.sessions.get(sessionId)!.retryCount++;
+      this.sessions.get(sessionId)!.isProcessing = false;
+      setTimeout(() => this.executeNextStep(sessionId), 1000 * this.sessions.get(sessionId)!.retryCount);
+    } else {
+      await this.completeWorkflow(sessionId, 'FAILED', result.error?.message || 'Step failed');
+    }
+  }
+
+  private async legacyExecute(sessionId: string, action: any, rowData: any): Promise<NodeResult> {
+    const session = this.sessions.get(sessionId)!;
+    
+    switch (action.type) {
+      case 'NAVIGATE':
+        const url = await this.processExpression(action.state?.url || action.url || '', rowData);
+        await this.handleNavigation(session.tabId, url);
+        return { success: true };
+      case 'CLOSE_TAB':
+        await this.handleCloseTab(sessionId);
+        return { success: true };
+      default:
+        return { success: false, error: { code: 'NOT_IMPLEMENTED', message: `No handler for ${action.type}` } };
+    }
   }
 }

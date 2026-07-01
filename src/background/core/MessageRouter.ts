@@ -4,6 +4,7 @@ import { Messenger, type ExtRequest, type ExtResponse } from '$shared/api/messen
 import { db } from '$shared/services/db';
 import { TabCoordinator } from './TabCoordinator';
 import { VaultService } from '$shared/services/vault';
+import { ResilientTabSender } from './ResilientTabSender';
 
 import { SandboxService } from './SandboxService';
 
@@ -50,14 +51,28 @@ export class MessageRouter {
       return;
     }
 
-    let contentMsg: any;
     console.log(`[FlowPilot] Bridging Sandbox Req: ${type}`);
 
+    // Standard Mapping for common commands to avoid massive switch
+    const commandMap: Record<string, { type: MessageType, payloadMapper: (m: any) => any }> = {
+      'FP_CLICK_REQ': { type: MessageType.DOM_CLICK, payloadMapper: (m) => ({ selector: m.selector }) },
+      'FP_FILL_REQ': { type: MessageType.DOM_FILL, payloadMapper: (m) => ({ selector: m.selector, value: m.value }) },
+      'FP_WAIT_FOR_REQ': { type: MessageType.DOM_HIGHLIGHT, payloadMapper: (m) => ({ selector: m.selector }) },
+      'FP_SCAN_REQ': { type: MessageType.DOM_SCAN, payloadMapper: () => ({}) }
+    };
+
+    const mapping = commandMap[type];
+    if (mapping) {
+      const response = await this.forwardWithRetry({ 
+        id: crypto.randomUUID(),
+        type: mapping.type, 
+        payload: mapping.payloadMapper(message) 
+      });
+      chrome.runtime.sendMessage({ type: type.replace('_REQ', '_RES'), callId, data: response.data || response.success });
+      return;
+    }
+
     switch (type) {
-      case 'FP_CLICK_REQ': contentMsg = { type: MessageType.DOM_CLICK, payload: { selector: message.selector } }; break;
-      case 'FP_FILL_REQ': contentMsg = { type: MessageType.DOM_FILL, payload: { selector: message.selector, value: message.value } }; break;
-      case 'FP_WAIT_FOR_REQ': contentMsg = { type: MessageType.DOM_HIGHLIGHT, payload: { selector: message.selector } }; break; 
-      case 'FP_SCAN_REQ': contentMsg = { type: MessageType.DOM_SCAN, payload: {} }; break;
       case 'FP_ALERT_REQ': 
         await chrome.scripting.executeScript({ target: { tabId }, func: (m) => alert(m), args: [message.message], world: 'MAIN' });
         chrome.runtime.sendMessage({ type: 'FP_ALERT_RES', callId, data: true });
@@ -71,19 +86,20 @@ export class MessageRouter {
         chrome.runtime.sendMessage({ type: 'FP_GLOBAL_RES', callId, data: globalRes.data || globalRes.success });
         return;
     }
-
-    if (contentMsg) {
-      const response = await this.forwardWithRetry(contentMsg);
-      chrome.runtime.sendMessage({ type: type.replace('_REQ', '_RES'), callId, data: response.data || response.success });
-    }
   }
 
   private handleMessage = async (request: ExtRequest, sender: chrome.runtime.MessageSender): Promise<ExtResponse> => {
     switch (request.type) {
       case MessageType.WORKFLOW_START:
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (tab?.id) this.tabCoordinator.registerTab(tab.id, 'PRIMARY', tab.url);
-        return await this.workflowRunner.start(request.payload.workflowId);
+        let workflowTabId = request.payload.tabId;
+        if (!workflowTabId) {
+          const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          workflowTabId = activeTab?.id;
+        }
+        if (workflowTabId) {
+          this.tabCoordinator.registerTab(workflowTabId, 'PRIMARY', '');
+        }
+        return await this.workflowRunner.start(request.payload.workflowId, { tabId: workflowTabId });
       
       case MessageType.WORKFLOW_STOP:
         return await this.workflowRunner.stop(request.payload?.sessionId);
@@ -104,9 +120,11 @@ export class MessageRouter {
       case MessageType.DOM_SCAN:
       case MessageType.DOM_FILL:
       case MessageType.DOM_CLICK:
+      case MessageType.DOM_INTERACT:
       case MessageType.DOM_SCRIPT:
       case MessageType.DOM_HIGHLIGHT:
       case MessageType.DOM_EVAL:
+      case MessageType.DOM_GET_SPEC:
       case MessageType.RECORDER_START:
       case MessageType.RECORDER_STOP:
       case MessageType.PICKER_START:
@@ -116,7 +134,29 @@ export class MessageRouter {
         }
         return await this.forwardWithRetry(request);
       
+      case MessageType.NAVIGATE:
+        const targetTabId = request.payload.tabId || this.tabCoordinator.getPrimaryTabId();
+        if (targetTabId) {
+          await chrome.tabs.update(targetTabId, { url: request.payload.url });
+          return { success: true };
+        }
+        return { success: false, error: { code: 'NO_TAB', message: 'No target tab for navigation' } };
+
+      case MessageType.DOM_WAIT_STABILITY:
+        return await this.forwardWithRetry(request);
+
       case MessageType.PICKER_SELECT:
+        // Broadcast stop picking to all frames in the active tab to clean up overlays/listeners
+        try {
+          let tabId: number | null = this.tabCoordinator.getPrimaryTabId();
+          if (tabId === null) {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            tabId = tab?.id ?? null;
+          }
+          if (tabId !== null) {
+            chrome.tabs.sendMessage(tabId, { type: MessageType.PICKER_STOP, payload: {} }).catch(() => {});
+          }
+        } catch (e) {}
         // Handled directly by sidepanel listeners, do not echo
         return { success: true };
 
@@ -162,31 +202,7 @@ export class MessageRouter {
     }
     if (tabId === null) return { success: false, error: { code: 'NO_TAB', message: 'No target tab found' } };
 
-    let response = await Messenger.sendToTab(tabId, request.type, request.payload);
-    if (!response.success && (response.error?.message?.includes('Could not establish connection') || response.error?.code === 'IPC_TAB_ERROR')) {
-      try {
-        await chrome.scripting.executeScript({ target: { tabId }, files: ['assets/content.js'] });
-        
-        // HANDSHAKE: Verify script is truly active before proceeding
-        let isReady = false;
-        const PING_TYPE = MessageType.IPC_PING;
-        for (let attempt = 0; attempt < 5; attempt++) {
-          await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
-          const ping = await Messenger.sendToTab(tabId, PING_TYPE, {});
-          if (ping.success && ping.data === 'PONG') {
-            isReady = true;
-            break;
-          }
-        }
-
-        if (!isReady) throw new Error('Content script failed to initialize');
-        
-        response = await Messenger.sendToTab(tabId, request.type, request.payload);
-      } catch (injectError: any) {
-        return { success: false, error: { code: 'INJECTION_FAILED', message: injectError.message } };
-      }
-    }
-    return response;
+    return await ResilientTabSender.send(tabId, request.type, request.payload);
   }
 
   private async prepareScriptData(payload: any): Promise<any> {

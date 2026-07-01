@@ -5,7 +5,7 @@ import { Recorder } from './modules/Recorder';
 import { ElementPicker } from './modules/Picker';
 import { FloatingHUD } from './modules/HUD';
 import { SPAWatcher } from './modules/SPAWatcher';
-import { SelectorHealer } from '$shared/utils/selectors';
+import { SelectorHealer, SelectorBuilder } from '$shared/utils/selectors';
 import { DOMUtils } from '$shared/utils/dom';
 
 // Action Helpers
@@ -203,7 +203,7 @@ async function handleContentMessage(request: ExtRequest): Promise<ExtResponse> {
     
     case MessageType.PICKER_START:
       FloatingHUD.update({ message: 'Picker active', status: 'PAUSED' });
-      ElementPicker.start();
+      ElementPicker.start(request.payload);
       return { success: true };
 
     case MessageType.PICKER_STOP:
@@ -215,6 +215,18 @@ async function handleContentMessage(request: ExtRequest): Promise<ExtResponse> {
       const highlightTarget = SelectorHealer.findElement(request.payload.candidates || [{ selector: request.payload.selector, type: 'ID', confidence: 100 }]);
       FloatingHUD.showPulse(highlightTarget.element);
       return highlightElement(highlightTarget.element as HTMLElement);
+
+    case MessageType.DOM_GET_SPEC:
+      try {
+        const target = SelectorHealer.findElement(request.payload.candidates || [{ selector: request.payload.selector, type: 'ID', confidence: 100 }]);
+        if (target.element) {
+          const spec = SelectorBuilder.getSpec(target.element);
+          return { success: true, data: spec };
+        }
+        return { success: false, error: { code: 'NOT_FOUND', message: 'Element not found' } };
+      } catch (err: any) {
+        return { success: false, error: { code: 'GET_SPEC_FAILED', message: err.message } };
+      }
 
     case MessageType.RECORDER_START:
       FloatingHUD.update({ message: 'Recording active', status: 'PAUSED' });
@@ -257,13 +269,14 @@ Messenger.listen(handleContentMessage);
  */
 async function performAction(type: 'FILL' | 'CLICK', payload: any): Promise<ExtResponse> {
   const { selector, value, candidates, metadata } = payload;
-  
+  const targetSelector = selector || 'Unknown Selector';
+
   const element = await findTargetElement(selector, candidates, metadata?.spec);
   if (!element) {
-    return { success: false, error: { code: 'ELEMENT_NOT_FOUND', message: `Could not find element: ${selector}` } };
+    return { success: false, error: { code: 'ELEMENT_NOT_FOUND', message: `Could not find element: ${targetSelector}` } };
   }
 
-  FloatingHUD.update({ message: `${type === 'FILL' ? 'Filling' : 'Clicking'} ${selector}...`, status: 'RUNNING' });
+  FloatingHUD.update({ message: `${type === 'FILL' ? 'Filling' : 'Clicking'} element...`, status: 'RUNNING' });
   FloatingHUD.showPulse(element);
 
   if (type === 'FILL') {
@@ -278,10 +291,12 @@ async function performAction(type: 'FILL' | 'CLICK', payload: any): Promise<ExtR
  */
 async function handleInteract(payload: any): Promise<ExtResponse> {
   const { action, selector, value, candidates, metadata } = payload;
+  const targetSelector = selector || 'Unknown Selector';
+  
   const element = await findTargetElement(selector, candidates, metadata?.spec);
 
   if (!element) {
-    return { success: false, error: { code: 'ELEMENT_NOT_FOUND', message: `Target not found: ${selector}` } };
+    return { success: false, error: { code: 'ELEMENT_NOT_FOUND', message: `Could not find element: ${targetSelector}` } };
   }
 
   if (!metadata?.skipHUD) {
@@ -324,7 +339,7 @@ async function handleInteract(payload: any): Promise<ExtResponse> {
     case 'blur': return StateHelper.blur(element);
     case 'copy': return StateHelper.copy(element);
     case 'cut': return StateHelper.cut(element);
-    case 'paste': return StateHelper.paste(element);
+    case 'paste': return StateHelper.paste(element, value);
 
     // Data
     case 'extract-text': return StateHelper.extract(element, 'TEXT');

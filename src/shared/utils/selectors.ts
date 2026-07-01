@@ -9,6 +9,12 @@ export interface ElementSpec {
   id: string;
   name: string;
   rect: { x: number, y: number, w: number, h: number };
+  type?: string;
+  placeholder?: string;
+  min?: string;
+  max?: string;
+  step?: string;
+  options?: string[];
 }
 
 export class SelectorBuilder {
@@ -30,11 +36,7 @@ export class SelectorBuilder {
     // 2. HYBRID (Combination: Tag + Classes + Nth) - Requested by user
     const hybrid = this.generateHybridSelector(element);
     if (hybrid) {
-      scores.push({
-        selector: hybrid,
-        type: 'HYBRID',
-        confidence: SELECTOR_CONFIDENCE.HYBRID
-      });
+      scores.push(this.disambiguate(element, hybrid, 'HYBRID', SELECTOR_CONFIDENCE.HYBRID));
     }
 
     // 3. Name attribute
@@ -81,42 +83,114 @@ export class SelectorBuilder {
 
   static getSpec(el: HTMLElement): ElementSpec {
     const rect = el.getBoundingClientRect();
-    return {
+    const classNameStr = typeof (el as any).className === 'string' ? (el as any).className : (el as any).className?.baseVal || '';
+    
+    const spec: ElementSpec = {
       tagName: el.tagName.toLowerCase(),
       innerText: el.innerText?.substring(0, 100) || '',
       role: el.getAttribute('role') || '',
-      className: el.className || '',
+      className: classNameStr,
       id: el.id || '',
       name: el.getAttribute('name') || '',
       rect: { x: rect.left + window.scrollX, y: rect.top + window.scrollY, w: rect.width, h: rect.height }
     };
+
+    if (el instanceof HTMLInputElement) {
+      spec.type = el.type;
+      spec.placeholder = el.placeholder || '';
+      spec.min = el.getAttribute('min') || '';
+      spec.max = el.getAttribute('max') || '';
+      spec.step = el.getAttribute('step') || '';
+      
+      const listId = el.getAttribute('list');
+      if (listId) {
+        const root = el.getRootNode() as Document | ShadowRoot;
+        const datalist = typeof root.getElementById === 'function' ? root.getElementById(listId) : null;
+        if (datalist) {
+          spec.options = Array.from(datalist.querySelectorAll('option')).map(o => o.value || o.text);
+          spec.type = 'select';
+        }
+      }
+    } else if (el instanceof HTMLTextAreaElement) {
+      spec.type = 'textarea';
+      spec.placeholder = el.placeholder || '';
+    } else if (el instanceof HTMLSelectElement) {
+      spec.type = 'select';
+      spec.options = Array.from(el.options).map(o => o.value || o.text);
+    }
+
+    return spec;
   }
 
   private static generateHybridSelector(el: HTMLElement): string {
     const tag = el.tagName.toLowerCase();
-    let selector = tag;
-
+    
+    let localSel = tag;
     if (el.id && !this.isDynamic(el.id)) {
-      selector += `#${el.id}`;
+      return `#${el.id}`;
     }
-
-    if (el.className && typeof el.className === 'string') {
-      const classes = el.className.split(/\s+/).filter(c => c && !this.isDynamic(c));
+    
+    const classNameStr = typeof (el as any).className === 'string' ? (el as any).className : (el as any).className?.baseVal || '';
+    if (classNameStr) {
+      const classes = classNameStr.split(/\s+/).filter((c: string) => c && !this.isDynamic(c));
       if (classes.length > 0) {
-        selector += `.${classes.join('.')}`;
+        localSel += `.${classes.join('.')}`;
       }
     }
 
-    // Add positional nth-of-type for robustness
-    let index = 1;
+    let sibIndex = 1;
     let sib = el.previousElementSibling;
     while (sib) {
-      if (sib.tagName === el.tagName) index++;
+      if (sib.tagName === el.tagName) sibIndex++;
       sib = sib.previousElementSibling;
     }
-    selector += `:nth-of-type(${index})`;
+    localSel += `:nth-of-type(${sibIndex})`;
 
-    return selector;
+    try {
+      if (DOMUtils.querySelectorAllDeep(localSel).length === 1) {
+        return localSel;
+      }
+    } catch (e) {}
+
+    let current = el.parentElement;
+    let path = localSel;
+    let depth = 0;
+    while (current && current.tagName !== 'BODY' && current.tagName !== 'HTML' && depth < 4) {
+      let currentSel = current.tagName.toLowerCase();
+      if (current.id && !this.isDynamic(current.id)) {
+        path = `#${current.id} > ${path}`;
+        break;
+      }
+      
+      const parentClassStr = typeof (current as any).className === 'string' ? (current as any).className : (current as any).className?.baseVal || '';
+      if (parentClassStr) {
+        const parentClasses = parentClassStr.split(/\s+/).filter((c: string) => c && !this.isDynamic(c));
+        if (parentClasses.length > 0) {
+          currentSel += `.${parentClasses.join('.')}`;
+        }
+      }
+
+      let parentSibIndex = 1;
+      let parentSib = current.previousElementSibling;
+      while (parentSib) {
+        if (parentSib.tagName === current.tagName) parentSibIndex++;
+        parentSib = parentSib.previousElementSibling;
+      }
+      currentSel += `:nth-of-type(${parentSibIndex})`;
+
+      path = `${currentSel} > ${path}`;
+
+      try {
+        if (DOMUtils.querySelectorAllDeep(path).length === 1) {
+          return path;
+        }
+      } catch (e) {}
+
+      current = current.parentElement;
+      depth++;
+    }
+
+    return path;
   }
 
   private static disambiguate(element: HTMLElement, selector: string, type: any, confidence: number): SelectorScore {
@@ -148,7 +222,7 @@ export class SelectorBuilder {
 
   private static getXPath(element: HTMLElement): string {
     if (element.id && !this.isDynamic(element.id)) return `//*[@id="${element.id}"]`;
-    const paths = [];
+    const paths: string[] = [];
     for (; element && element.nodeType === Node.ELEMENT_NODE; element = element.parentNode as HTMLElement) {
       let index = 0;
       for (let sibling = element.previousSibling; sibling; sibling = sibling.previousSibling) {
@@ -178,6 +252,8 @@ export class SelectorHealer {
   static findElement(candidates: SelectorScore[], spec?: ElementSpec): { element: HTMLElement | null; selector: string | null } {
     if (!candidates || candidates.length === 0) return { element: null, selector: null };
 
+    let fallbackMatch: { element: HTMLElement; selector: string } | null = null;
+
     // 1. Try standard strategies
     const validCandidates = (candidates || []).filter(c => c.selector && c.selector.trim().length > 0);
     for (const candidate of validCandidates) {
@@ -187,24 +263,42 @@ export class SelectorHealer {
         const element = matches[index];
 
         if (element instanceof HTMLElement) {
+          // Optional: check if it's a "good" match based on spec even if found via selector
+          if (spec && spec.tagName && this.calculateSimilarity(element, spec) < 0.5) {
+            continue; // Selector found wrong element (false positive)
+          }
+
           if (DOMUtils.isVisible(element)) {
-            // Optional: check if it's a "good" match based on spec even if found via selector
-            if (spec && spec.tagName && this.calculateSimilarity(element, spec) < 0.5) {
-              continue; // Selector found wrong element (false positive)
-            }
             return { element, selector: candidate.selector };
+          } else if (!fallbackMatch) {
+            fallbackMatch = { element, selector: candidate.selector };
           }
         }
       } catch (e) {}
     }
 
+    if (fallbackMatch) {
+      console.warn(`[SelectorHealer] No visible match found, using fallback match: ${fallbackMatch.selector}`);
+      return fallbackMatch;
+    }
+
     // 2. Self-Healing: Coordinate-based discovery as requested
     if (spec && spec.rect && spec.rect.w > 0) {
       try {
-        const elAtPoint = document.elementFromPoint(
+        const getElementFromPointDeep = (x: number, y: number): HTMLElement | null => {
+          let el = document.elementFromPoint(x, y) as HTMLElement | null;
+          while (el && el.shadowRoot) {
+            const innerEl = el.shadowRoot.elementFromPoint(x, y) as HTMLElement | null;
+            if (!innerEl || innerEl === el) break;
+            el = innerEl;
+          }
+          return el;
+        };
+
+        const elAtPoint = getElementFromPointDeep(
           spec.rect.x - window.scrollX + (spec.rect.w / 2),
           spec.rect.y - window.scrollY + (spec.rect.h / 2)
-        ) as HTMLElement;
+        );
 
         if (elAtPoint) {
           const similarity = this.calculateSimilarity(elAtPoint, spec);

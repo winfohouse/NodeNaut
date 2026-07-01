@@ -1,7 +1,7 @@
 <script lang="ts">
   import {
     Table as TableIcon, Trash2, FileUp, CheckCircle2, XCircle, Clock,
-    Plus, Download, RotateCcw, RotateCw, GripVertical
+    Plus, Download, RotateCcw, RotateCw, GripVertical, WrapText
   } from '@lucide/svelte';
   import Papa from 'papaparse';
   import { db } from '$shared/services/db';
@@ -381,6 +381,89 @@
     tableId = null;
   }
 
+  async function handleNewTable() {
+    const id = crypto.randomUUID();
+    const headers = ['Column 1', 'Column 2'];
+    const rows = [{ 'Column 1': '', 'Column 2': '' }];
+    await db.data_tables.add({
+      id,
+      name: 'New Table',
+      headers,
+      rows,
+      created_at: Date.now()
+    });
+    onImport(id);
+  }
+
+  let isAutoExpand = false;
+
+  // ── Row resize ────────────────────────────────────────────
+  let rowHeights: Record<string, number> = {};
+  let isRowResizing = false;
+  let currentResizingRow: string | null = null;
+  let startY = 0;
+  let startHeight = 0;
+
+  function startRowResize(e: MouseEvent, rowId: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    isRowResizing = true;
+    currentResizingRow = rowId;
+    startY = e.pageY;
+    startHeight = rowHeights[rowId] || 30;
+    window.addEventListener('mousemove', handleRowResize);
+    window.addEventListener('mouseup', stopRowResize, { once: true });
+  }
+
+  function handleRowResize(e: MouseEvent) {
+    if (!isRowResizing || !currentResizingRow) return;
+    rowHeights[currentResizingRow] = Math.max(22, startHeight + (e.pageY - startY));
+    rowHeights = rowHeights;
+  }
+
+  function stopRowResize() {
+    isRowResizing = false;
+    currentResizingRow = null;
+    window.removeEventListener('mousemove', handleRowResize);
+  }
+
+  function ensureRowIds(rows: any[]) {
+    if (!rows) return;
+    rows.forEach((r) => {
+      if (r && !r._id) {
+        Object.defineProperty(r, '_id', {
+          value: crypto.randomUUID(),
+          writable: true,
+          enumerable: false
+        });
+      }
+    });
+  }
+
+  $: if (currentTable?.rows) {
+    ensureRowIds(currentTable.rows);
+  }
+
+  function autoResize(node: HTMLTextAreaElement, params: { value: string; hasCustomHeight: boolean; active: boolean }) {
+    const update = () => {
+      if (!params.active || params.hasCustomHeight) {
+        node.style.height = '';
+        return;
+      }
+      node.style.height = 'auto';
+      node.style.height = `${node.scrollHeight}px`;
+    };
+    
+    update();
+    
+    return {
+      update(newParams: { value: string; hasCustomHeight: boolean; active: boolean }) {
+        params = newParams;
+        update();
+      }
+    };
+  }
+
   function handleCellChange(row: any, header: string, val: string) {
     if (row[header] === val) return;
     row[header] = val;
@@ -463,6 +546,15 @@
         </label>
         <button class="tb-btn" on:click={addColumn} title="Add column"><Plus size={13} /></button>
         <button class="tb-btn" on:click={addRow} title="Add row"><Plus size={13} /><span>Row</span></button>
+        <button 
+          class="tb-btn" 
+          class:active-toggle={isAutoExpand}
+          on:click={() => isAutoExpand = !isAutoExpand} 
+          title="Toggle text wrapping and auto-expanding rows"
+        >
+          <WrapText size={13} />
+          <span>Wrap</span>
+        </button>
         <button class="tb-btn" on:click={exportCSV} title="Export CSV"><Download size={13} /></button>
         <button class="tb-btn danger" on:click={deleteTable} title="Delete table"><Trash2 size={13} /></button>
       </div>
@@ -513,6 +605,7 @@
             <tr
               class:row-dragging={draggedRowIndices.includes(ri)}
               class:row-drag-over={dragOverRow === ri && isDraggingRow}
+              style={rowHeights[row._id] ? `height: ${rowHeights[row._id]}px` : ''}
             >
               <!-- row number / status / drag handle -->
               <td
@@ -522,6 +615,7 @@
                 on:dragover|preventDefault={() => { if (isDraggingRow) dragOverRow = ri; }}
                 on:dragleave={() => { dragOverRow = null; }}
                 on:drop={() => handleRowDrop(ri)}
+                style={rowHeights[row._id] ? `height: ${rowHeights[row._id]}px` : ''}
               >
                 <div class="rn-inner">
                   {#if status === 'SUCCESS'}<CheckCircle2 size={12} class="s-ok" />
@@ -530,6 +624,13 @@
                   {:else}<span class="rn">{ri + 1}</span>{/if}
                   <GripVertical size={11} class="row-grip" />
                 </div>
+                <div
+                  class="row-resizer"
+                  on:mousedown={(e) => startRowResize(e, row._id)}
+                  role="button"
+                  tabindex="-1"
+                  aria-label="Resize row"
+                ></div>
               </td>
 
               {#each (currentTable.headers || []) as header, ci}
@@ -543,12 +644,29 @@
                   role="gridcell"
                   tabindex="-1"
                 >
-                  <input
-                    type="text"
-                    class="cell"
-                    value={row[header] ?? ''}
-                    on:change={(e) => handleCellChange(row, header, (e.target as HTMLInputElement).value)}
-                  />
+                  {#if isAutoExpand}
+                    <textarea
+                      class="cell wrap-cell"
+                      use:autoResize={{ value: row[header] ?? '', hasCustomHeight: !!rowHeights[row._id], active: isAutoExpand }}
+                      value={row[header] ?? ''}
+                      on:input={(e) => {
+                        if (isAutoExpand && !rowHeights[row._id]) {
+                          e.currentTarget.style.height = 'auto';
+                          e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`;
+                        }
+                      }}
+                      on:change={(e) => handleCellChange(row, header, (e.target as HTMLTextAreaElement).value)}
+                      style={rowHeights[row._id] ? `height: ${rowHeights[row._id] - 2}px; overflow-y: auto;` : ''}
+                    />
+                  {:else}
+                    <input
+                      type="text"
+                      class="cell"
+                      value={row[header] ?? ''}
+                      on:change={(e) => handleCellChange(row, header, (e.target as HTMLInputElement).value)}
+                      style={rowHeights[row._id] ? `height: ${rowHeights[row._id] - 2}px;` : ''}
+                    />
+                  {/if}
                   {#if isCellSelected(ri, ci) && ri === Math.max(selection!.r1, selection!.r2) && ci === Math.max(selection!.c1, selection!.c2)}
                     <div
                       class="move-handle"
@@ -587,7 +705,7 @@
           Import CSV
           <input type="file" accept=".csv" on:change={handleFileUpload} style="display:none" />
         </label>
-        <button class="btn-secondary" on:click={addRow}>
+        <button class="btn-secondary" on:click={handleNewTable}>
           <Plus size={13} /> New table
         </button>
       </div>
@@ -844,7 +962,7 @@
     font-family: inherit;
   }
   .cell:focus {
-    background: #fff;
+    background: var(--bg-surface-solid, #fff);
     box-shadow: inset 0 0 0 2px var(--accent, #4f8ef7);
   }
 
@@ -946,6 +1064,34 @@
     color: var(--text-primary, #333);
   }
   .btn-secondary:hover { border-color: var(--accent, #4f8ef7); }
+
+  .row-resizer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 5px;
+    cursor: row-resize;
+    z-index: 6;
+  }
+  .row-resizer:hover {
+    background: var(--accent, #4f8ef7);
+  }
+  .cell.wrap-cell {
+    resize: none;
+    white-space: pre-wrap;
+    word-break: break-all;
+    box-sizing: border-box;
+    line-height: 1.4;
+    padding: 6px 8px;
+    display: block;
+    overflow-y: hidden;
+  }
+  .tb-btn.active-toggle {
+    background: var(--bg-surface-solid, #e8e8e8);
+    border-color: var(--accent, #4f8ef7);
+    color: var(--accent, #4f8ef7);
+  }
 
   /* ── Misc ─────────────────────────────────────────────── */
   :global(.icon-muted) { color: var(--text-muted, #aaa); }

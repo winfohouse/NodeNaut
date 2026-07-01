@@ -118,7 +118,7 @@
             </div>
           </div>
         </div>
-      {:else if value.includes('{')}
+      {:else if typeof value === 'string' && value.includes('{')}
         <div class="success-indicator" title="Expression Valid">
           <CheckCircle2 size={14} />
         </div>
