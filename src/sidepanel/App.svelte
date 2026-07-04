@@ -930,15 +930,15 @@ Welcome to the NodeNaut custom node developer environment!
           <p class="zone-desc">Connect NodeNaut to external AI assistants (like Claude Desktop or Cursor) to build and run workflows using natural language. Download the portable local companion binary for your OS to enable automatic local pairing (Zero Cloud Costs).</p>
           
           <div class="mcp-downloads">
-            <a href="/mcp/nodenaut-mcp-win-v{mcpVersion}.exe" download="nodenaut-mcp-win-v{mcpVersion}.exe" class="mcp-btn">
+            <a href="https://github.com/winfohouse/NodeNaut/releases/latest/download/nodenaut-mcp-win.exe" target="_blank" class="mcp-btn">
               <Download size={12} />
               <span>Windows (.exe)</span>
             </a>
-            <a href="/mcp/nodenaut-mcp-macos-v{mcpVersion}" download="nodenaut-mcp-macos-v{mcpVersion}" class="mcp-btn">
+            <a href="https://github.com/winfohouse/NodeNaut/releases/latest/download/nodenaut-mcp-macos" target="_blank" class="mcp-btn">
               <Download size={12} />
               <span>macOS Binary</span>
             </a>
-            <a href="/mcp/nodenaut-mcp-linux-v{mcpVersion}" download="nodenaut-mcp-linux-v{mcpVersion}" class="mcp-btn">
+            <a href="https://github.com/winfohouse/NodeNaut/releases/latest/download/nodenaut-mcp-linux" target="_blank" class="mcp-btn">
               <Download size={12} />
               <span>Linux Binary</span>
             </a>
