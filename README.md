@@ -11,6 +11,9 @@
 
 **Elite Programmable Browser Workflow & Smart Form Automation Platform**
 
+📥 **[Download for Chrome](https://github.com/winfohouse/FlowPilot/releases)** | 🦊 **[Download for Firefox](https://github.com/winfohouse/FlowPilot/releases)**
+
+
 FlowPilot is a visual, node-graph-based browser extension that lets you build, test, and execute complex browser automation workflows — from simple form filling to multi-tab scraping pipelines — entirely within your browser. It features a full visual canvas editor, a sandboxed JavaScript IDE (FlowScript), encrypted vault storage, reusable subflow bundles, and deep AI integration via the **Model Context Protocol (MCP)**.
 
 ---

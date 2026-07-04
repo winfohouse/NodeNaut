@@ -1,1 +1,0 @@
-import"./modulepreload-polyfill.js";var e=document.getElementById(`sandbox`);window.addEventListener(`message`,t=>{t.source===e?.contentWindow&&chrome.runtime.sendMessage(t.data)}),chrome.runtime.onMessage.addListener(t=>{(t.type===`TO_SANDBOX`||t.type?.startsWith(`FP_`))&&e?.contentWindow?.postMessage(t,`*`)}),console.log(`[FlowPilot] Offscreen Bridge Initialized`);
