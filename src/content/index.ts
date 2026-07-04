@@ -149,15 +149,15 @@ async function handleContentMessage(request: ExtRequest): Promise<ExtResponse> {
       return { success: true };
 
     case MessageType.DOM_FILL:
-      await SPAWatcher.waitForStability();
+      if (!request.payload?.skipStability) await SPAWatcher.waitForStability();
       return performAction('FILL', request.payload);
     
     case MessageType.DOM_CLICK:
-      await SPAWatcher.waitForStability();
+      if (!request.payload?.skipStability) await SPAWatcher.waitForStability();
       return performAction('CLICK', request.payload);
 
     case MessageType.DOM_INTERACT:
-      await SPAWatcher.waitForStability();
+      if (!request.payload?.skipStability) await SPAWatcher.waitForStability();
       return handleInteract(request.payload);
 
     case MessageType.DOM_EVAL: {

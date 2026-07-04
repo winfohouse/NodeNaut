@@ -118,11 +118,15 @@
       scan: () => _call('FP_SCAN', {}),
       log: log,
       waitFor: (s: string, t: number) => _call('FP_WAIT_FOR', { selector: s, timeout: t }),
+      getText: (s: string) => _call('FP_GET_TEXT', { selector: s }),
       alert: async (m: any) => {
         let val = m;
         if (m instanceof Promise) val = await m;
         return _call('FP_ALERT', { message: String(val) });
       },
+      listTabs: () => _call('FP_LIST_TABS', {}),
+      searchHistory: (text: string, maxResults?: number) => _call('FP_SEARCH_HISTORY', { text, maxResults }),
+      listExtensions: () => _call('FP_LIST_EXTENSIONS', {}),
       
       Click: (s: string) => _call('FP_CLICK', { selector: s }),
       Fill: (s: string, v: string) => _call('FP_FILL', { selector: s, value: v }),
@@ -130,7 +134,11 @@
       Wait: (m: number) => new Promise(r => setTimeout(r, m)),
       Scan: () => _call('FP_SCAN', {}),
       Log: log,
-      WaitFor: (s: string, t: number) => _call('FP_WAIT_FOR', { selector: s, timeout: t })
+      WaitFor: (s: string, t: number) => _call('FP_WAIT_FOR', { selector: s, timeout: t }),
+      GetText: (s: string) => _call('FP_GET_TEXT', { selector: s }),
+      ListTabs: () => _call('FP_LIST_TABS', {}),
+      SearchHistory: (text: string, maxResults?: number) => _call('FP_SEARCH_HISTORY', { text, maxResults }),
+      ListExtensions: () => _call('FP_LIST_EXTENSIONS', {})
     };
 
     const Table: any = {
@@ -152,6 +160,52 @@
       }
     };
 
+    const rowIndex = payload.rowIndex;
+    const smartRow: any = data ? { ...data } : {};
+    if (data) {
+      Object.keys(data).forEach(key => {
+        Object.defineProperty(smartRow, key, {
+          get: () => data[key],
+          set: (val) => {
+            data[key] = val;
+            if (rowIndex !== undefined && tableId) {
+              _call('FP_TABLE', { tableId, action: 'update', index: rowIndex, rowData: { [key]: val } }).catch(() => {});
+            }
+          },
+          enumerable: true,
+          configurable: true
+        });
+      });
+    }
+
+    Object.defineProperty(smartRow, 'index', {
+      value: rowIndex,
+      enumerable: false,
+      writable: false
+    });
+
+    Object.defineProperty(smartRow, 'set', {
+      value: async function(key: string, value: any) {
+        data[key] = value;
+        if (rowIndex !== undefined && tableId) {
+          await _call('FP_TABLE', { tableId, action: 'update', index: rowIndex, rowData: { [key]: value } });
+        }
+      },
+      enumerable: false,
+      writable: false
+    });
+
+    Object.defineProperty(smartRow, 'update', {
+      value: async function(fields: Record<string, any>) {
+        Object.assign(data, fields);
+        if (rowIndex !== undefined && tableId) {
+          await _call('FP_TABLE', { tableId, action: 'update', index: rowIndex, rowData: fields });
+        }
+      },
+      enumerable: false,
+      writable: false
+    });
+
     try {
       const scriptFunc = new Function('GLOBAL', 'FLOW', 'Table', '$row', 'alert', 'log', `
         const console = { log: log, error: log, warn: log };
@@ -159,7 +213,7 @@
           ${code}
         })();
       `);
-      const result = await scriptFunc(GLOBAL, FLOW, Table, data, FLOW.alert, FLOW.log);
+      const result = await scriptFunc(GLOBAL, FLOW, Table, smartRow, FLOW.alert, FLOW.log);
       window.parent.postMessage({ type: 'FP_SCRIPT_DONE', id, success: true, data: result }, '*');
     } catch (e: any) {
       window.parent.postMessage({ type: 'FP_SCRIPT_DONE', id, success: false, error: e.message }, '*');

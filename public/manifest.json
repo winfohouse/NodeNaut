@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FlowPilot",
-  "version": "0.1.0",
+  "version": "0.2.3",
   "description": "Elite Programmable Browser Workflow & Smart Form Automation Platform",
   "permissions": [
     "storage",
@@ -10,7 +10,14 @@
     "scripting",
     "activeTab",
     "offscreen",
-    "webNavigation"
+    "webNavigation",
+    "notifications",
+    "alarms",
+    "history",
+    "management",
+    "bookmarks",
+    "downloads",
+    "cookies"
   ],
   "host_permissions": [
     "<all_urls>"

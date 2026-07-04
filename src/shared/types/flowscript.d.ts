@@ -21,6 +21,12 @@ declare interface FlowEngine {
   waitFor(selector: string, timeout?: number): Promise<boolean>;
   /** Displays a native alert dialog on the target page. */
   alert(message: any): Promise<void>;
+  /** Returns a list of all open browser tabs. */
+  listTabs(): Promise<any[]>;
+  /** Searches Chrome browsing history for matches against a text query. */
+  searchHistory(text: string, maxResults?: number): Promise<any[]>;
+  /** Lists all installed browser extensions. */
+  listExtensions(): Promise<any[]>;
 
   /* Capitalized Aliases */
   Click(selector: string): Promise<boolean>;
@@ -29,6 +35,9 @@ declare interface FlowEngine {
   Scan(): Promise<any[]>;
   Log(message: any): void;
   WaitFor(selector: string, timeout?: number): Promise<boolean>;
+  ListTabs(): Promise<any[]>;
+  SearchHistory(text: string, maxResults?: number): Promise<any[]>;
+  ListExtensions(): Promise<any[]>;
 }
 
 /** Access to the Current Table Context */

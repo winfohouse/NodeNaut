@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { FlowPilotRegistry } from '$framework/Registry';
-  import { X } from '@lucide/svelte';
+  import { X, AlertTriangle } from '@lucide/svelte';
   
   // Standardizing on Svelte 5 prop-based callbacks for high-performance and minification safety
   export let nodes: any[] = [];
@@ -9,6 +9,7 @@
   export let selectedNodeId: string | null = null;
   export let selectedEdgeId: string | null = null;
   export let previews: Record<string, string> = {};
+  export let validationErrors: Record<string, string[]> = {};
 
   // Panning/Zooming
   export let panX = 0;
@@ -123,12 +124,27 @@
     return nodeHeights[id] || 100;
   }
 
+  let dragMousePos = { x: 0, y: 0 };
+
+  function handleDragOver(e: DragEvent) {
+    e.preventDefault();
+    if (e.clientX !== 0 || e.clientY !== 0) {
+      dragMousePos = getRelativeMouse(e as unknown as MouseEvent);
+    }
+  }
+
   function handleDrop(e: DragEvent) {
     e.preventDefault();
     const type = e.dataTransfer?.getData('node-type');
     if (!type) return;
 
-    const coords = getRelativeMouse(e as unknown as MouseEvent);
+    let coords;
+    if (e.clientX === 0 && e.clientY === 0) {
+      coords = dragMousePos;
+    } else {
+      coords = getRelativeMouse(e as unknown as MouseEvent);
+    }
+
     onDrop?.({ 
       type, 
       x: coords.x, 
@@ -177,7 +193,7 @@
   on:mouseup={stopInteraction}
   on:mouseleave={stopInteraction}
   on:keydown={handleKeydown}
-  on:dragover|preventDefault
+  on:dragover={handleDragOver}
   on:drop={handleDrop}
 >
   <svg class="edges-layer" width="100%" height="100%">
@@ -266,6 +282,12 @@
           {/if}
         </div>
 
+        {#if validationErrors[node.id] && validationErrors[node.id].length > 0}
+          <div class="node-warning-badge" title={validationErrors[node.id].join('\n')}>
+            <AlertTriangle size={12} />
+          </div>
+        {/if}
+
         <button 
           class="port input-port" 
           title="Input Port"
@@ -353,4 +375,28 @@
   .port-label { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-size: 0.5rem; font-weight: 900; color: var(--text-muted); text-transform: uppercase; white-space: nowrap; }
   .if-true .port-label { color: var(--status-success); }
   .if-false .port-label { color: var(--status-error); }
+
+  .node-warning-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: var(--status-error);
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 8px rgba(220, 38, 38, 0.6);
+    z-index: 50;
+    cursor: help;
+    animation: node-warn-pulse 2s infinite;
+  }
+
+  @keyframes node-warn-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); box-shadow: 0 0 12px rgba(220, 38, 38, 0.9); }
+    100% { transform: scale(1); }
+  }
 </style>

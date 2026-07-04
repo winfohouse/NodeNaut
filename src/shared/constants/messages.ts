@@ -52,5 +52,8 @@ export enum MessageType {
   // Picker Intelligence
   PICKER_START = 'PICKER_START',
   PICKER_STOP = 'PICKER_STOP',
-  PICKER_SELECT = 'PICKER_SELECT'
+  PICKER_SELECT = 'PICKER_SELECT',
+
+  // Design Isolation
+  TEST_NODE = 'TEST_NODE'
 }

@@ -8,13 +8,21 @@
   export let onDragStart: (type: string, e: DragEvent) => void;
   export let onScan: () => void = () => {};
   export let onPicker: () => void = () => {};
+  export let onSelectNode: (data: { type: string, stateOverride?: string, labelOverride?: string }) => void = () => {};
+  export let isBundle = false;
 
   let isOpen = false;
   let isDragging = false;
   let searchTerm = '';
   const registry = FlowPilotRegistry.getInstance();
   
-  $: manifests = registry.getAllManifests();
+  $: manifests = registry.getAllManifests().filter(m => {
+    if (m.type === 'START') return false;
+    if (!isBundle) {
+      if (m.type === 'BUNDLE_RETURN' || m.type === 'EXECUTE_NODE_REF') return false;
+    }
+    return true;
+  });
 
   // High-discoverability specialized nodes (mapped to INTERACT runtime)
   const specializedNodes: any[] = [
@@ -159,6 +167,15 @@
                     draggable="true"
                     role="listitem"
                     on:dragstart={(e) => handleDragStart(node, e)}
+                    on:click={() => {
+                      const type = node.isSpecialized ? node.runtimeType : node.type;
+                      onSelectNode({
+                        type,
+                        stateOverride: node.isSpecialized ? JSON.stringify(node.initialState) : undefined,
+                        labelOverride: node.isSpecialized ? node.label : undefined
+                      });
+                      isOpen = false;
+                    }}
                   >
                     <div class="node-icon-wrap">
                       <svelte:component this={getIcon(node.icon)} size={18} />

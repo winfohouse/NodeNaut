@@ -35,7 +35,7 @@ export class SPAWatcher {
   /**
    * Waits for DOM mutations to settle (idle detection)
    */
-  static async waitForStability(timeout = 5000): Promise<void> {
+  static async waitForStability(timeout = 1500): Promise<void> {
     return new Promise((resolve) => {
       let idleTimer: any;
       const observer = new MutationObserver(() => {
@@ -43,7 +43,7 @@ export class SPAWatcher {
         idleTimer = setTimeout(() => {
           observer.disconnect();
           resolve();
-        }, 500); // 500ms of silence = stable
+        }, 150); // 150ms of silence = stable
       });
 
       observer.observe(document.body, {

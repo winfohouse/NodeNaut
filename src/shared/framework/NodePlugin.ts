@@ -97,6 +97,8 @@ export interface ExecutionContext<TState = Record<string, unknown>> {
     id: string;
     state: TState;
     tabId: number;
+    tableId?: string;
+    rowIndex?: number;
   };
   services: {
     dom: Record<string, unknown>; // Page-specific context
@@ -104,6 +106,7 @@ export interface ExecutionContext<TState = Record<string, unknown>> {
     vault: VaultServiceCapability;
     sandbox: SandboxServiceCapability;
     picker: DiscoveryServiceCapability;
+    runner: any;
   };
   vars: {
     get<V = unknown>(key: string): Promise<V>;

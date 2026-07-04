@@ -1,17 +1,17 @@
 <script lang="ts">
-  import { LayoutGrid, Search, ScrollText, Settings, Sparkles, Database } from '@lucide/svelte';
+  import { LayoutGrid, ScrollText, Settings, Sparkles, Database, Layers } from '@lucide/svelte';
   
   export let activeTab: 'workflows' | 'scanner' | 'vault' | 'logs' | 'settings' | 'help' = 'workflows';
 </script>
-
+ 
 <nav class="navbar glass">
   <button class="nav-item" class:active={activeTab === 'workflows'} on:click={() => activeTab = 'workflows'}>
     <LayoutGrid size={18} />
     <span>Library</span>
   </button>
   <button class="nav-item" class:active={activeTab === 'scanner'} on:click={() => activeTab = 'scanner'}>
-    <Search size={18} />
-    <span>Senses</span>
+    <Layers size={18} />
+    <span>Node Bundles</span>
   </button>
   <button class="nav-item" class:active={activeTab === 'vault'} on:click={() => activeTab = 'vault'}>
     <Database size={18} />

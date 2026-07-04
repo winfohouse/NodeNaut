@@ -10,6 +10,7 @@
   export let save: () => void;
   export let tableHeaders: string[] = [];
   export let testAction: (node: any) => void;
+  export let localVariables: string[] = [];
 
   let allWorkflows: any[] = [];
 
@@ -47,6 +48,7 @@
     <ExpressionInput 
       value={node.state.url || ''} 
       headers={tableHeaders} 
+      localVariables={localVariables}
       placeholder="https://..." 
       onChange={(val) => { node.state.url = val; save(); }} 
     />

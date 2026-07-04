@@ -31,21 +31,57 @@ export class WorkflowRunner {
     this.rehydrate();
   }
 
+  public updateActiveSessionsTableData(tableId: string, index: number, rowData: any) {
+    for (const session of this.sessions.values()) {
+      db.workflows.get(session.workflowId).then(wf => {
+        if (wf?.settings?.table_id === tableId && session.currentBatchData) {
+          if (session.currentBatchData[index]) {
+            session.currentBatchData[index] = {
+              ...session.currentBatchData[index],
+              ...rowData
+            };
+          }
+        }
+      }).catch(() => {});
+    }
+  }
+
   static getInstance(): WorkflowRunner {
     if (!WorkflowRunner.instance) {
       WorkflowRunner.instance = new WorkflowRunner();
     }
     return WorkflowRunner.instance;
   }
-
   private async createExecutionContext(sessionId: string, node: any, rowData: any): Promise<ExecutionContext<any>> {
-    const session = this.sessions.get(sessionId)!;
+    const session = this.sessions.get(sessionId);
+    let tabId = session?.tabId;
+    if (!tabId) {
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        tabId = tab?.id ?? 0;
+      } catch (e) {
+        tabId = 0;
+      }
+    }
+    
+    let tableId: string | undefined;
+    if (session) {
+      try {
+        const rawWorkflow = await db.workflows.get(session.workflowId);
+        if (rawWorkflow) {
+          const { settings } = await this.resolveWorkflowData(rawWorkflow);
+          tableId = settings?.table_id;
+        }
+      } catch (err) {}
+    }
     
     return {
       node: {
         id: node.id,
         state: node.state || {},
-        tabId: session.tabId
+        tabId,
+        tableId,
+        rowIndex: session?.currentRowIndex
       },
       services: {
         dom: {}, 
@@ -58,7 +94,8 @@ export class WorkflowRunner {
         picker: {
           start: async () => ({}) as any,
           scan: async () => []
-        } as DiscoveryServiceCapability
+        } as DiscoveryServiceCapability,
+        runner: this
       },
       vars: {
         get: async (key) => key === 'all' ? rowData : rowData[key],
@@ -71,8 +108,8 @@ export class WorkflowRunner {
         error: (msg, data) => console.error(`[Node:${node.type}] ${msg}`, data)
       },
       runtime: {
-        pause: () => this.pause(sessionId),
-        stop: () => this.stop(sessionId),
+        pause: () => session ? this.pause(sessionId) : Promise.resolve(),
+        stop: () => session ? this.stop(sessionId) : Promise.resolve(),
         next: (port) => {} // Handled by engine
       }
     };
@@ -147,7 +184,11 @@ export class WorkflowRunner {
     let batchData = null;
     let rowIndex = options.inheritedRowIndex || 0;
 
-    if (workflow.settings?.table_id && !options.rowData) {
+    if (workflow.settings?.is_bundle) {
+      batchData = [workflow.settings.test_props || {}];
+    } else if (options.rowData) {
+      batchData = [options.rowData];
+    } else if (workflow.settings?.table_id) {
       const table = await db.data_tables.get(workflow.settings.table_id);
       if (table) batchData = table.rows;
     }
@@ -289,6 +330,16 @@ export class WorkflowRunner {
     return await this.processExpression(expression, rowData);
   }
 
+  public async executeSingleNode(node: any, rowData: any, sessionId: string): Promise<NodeResult> {
+    const plugin = this.registry.getPlugin(node.type);
+    if (plugin) {
+      const execCtx = await this.createExecutionContext(sessionId, node, rowData);
+      return await plugin.execute(execCtx);
+    } else {
+      return await this.legacyExecute(sessionId, node, rowData);
+    }
+  }
+
   private async executeNextStep(sessionId: string) {
     const session = this.sessions.get(sessionId);
     if (!session || session.isProcessing || session.isWaiting) return;
@@ -362,6 +413,10 @@ export class WorkflowRunner {
       }
 
       if (stepResult.success) {
+        // Persist dataset changes in real-time if rowData was modified
+        if (session.currentBatchData && settings?.table_id) {
+          await db.data_tables.update(settings.table_id, { rows: session.currentBatchData });
+        }
         context.last_updated = Date.now();
         session.stepCount++;
         context.current_step_index = session.stepCount; 

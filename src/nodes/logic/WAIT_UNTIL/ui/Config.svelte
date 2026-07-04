@@ -8,6 +8,7 @@
   export let save: () => void;
   export let tableHeaders: string[] = [];
   export let testAction: (node: any) => void;
+  export let localVariables: string[] = [];
 </script>
 
 <div class="node-config-plugin">
@@ -26,6 +27,7 @@
     <ExpressionInput 
       value={node.state.value || ''} 
       headers={tableHeaders} 
+      localVariables={localVariables}
       placeholder="e.g. &#123;&#123;GLOBAL.auth.otp&#125;&#125; !== ''" 
       onChange={(val) => { node.state.value = val; save(); }} 
     />

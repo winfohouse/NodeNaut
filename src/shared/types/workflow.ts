@@ -1,19 +1,5 @@
 import type { SelectorScore } from './scanner';
-export type ActionType = 
-  | 'CLICK' 
-  | 'TYPE' 
-  | 'INTERACT'
-  | 'SELECT' 
-  | 'NAVIGATE' 
-  | 'WAIT' 
-  | 'HOVER' 
-  | 'SCRIPT' 
-  | 'WAIT_USER' 
-  | 'WAIT_STABILITY'
-  | 'SPAWN'
-  | 'CLOSE_TAB'
-  | 'WAIT_UNTIL'
-  | 'IF_BRANCH';
+export type ActionType = string;
 
 export type InteractType = 
   | 'click' | 'dblclick' | 'right-click' | 'hover' 

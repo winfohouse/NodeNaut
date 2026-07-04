@@ -14,6 +14,7 @@
   export let highlight: (node: any) => void;
   export let testAction: (node: any) => void;
   export let tableHeaders: string[] = [];
+  export let localVariables: string[] = [];
 
   let fileInfo: { name: string; size: string } | null = null;
   let fileInputEl: HTMLInputElement;
@@ -217,6 +218,7 @@
     <ExpressionInput 
       value={node.state.value || ''} 
       headers={tableHeaders} 
+      localVariables={localVariables}
       placeholder={inputType === 'file' ? "file:name:mime:base64 or {Variable}" : "Value or {Variable}"} 
       onChange={(val) => { node.state.value = val; save(); }} 
     />

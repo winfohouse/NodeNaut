@@ -8,6 +8,7 @@
   export let node: any;
   export let save: () => void;
   export let tableHeaders: string[] = [];
+  export let localVariables: string[] = [];
   export let startPicker: (cb: (data: any) => void, mode?: 'step' | 'condition') => void;
   export let testAction: (node: any) => void;
 
@@ -68,6 +69,7 @@
       <ExpressionInput 
         value={node.state.conditionModel.customCode || ''} 
         headers={tableHeaders} 
+        localVariables={localVariables}
         placeholder="e.g. &#123;Price&#125; > 100" 
         onChange={(val) => { node.state.conditionModel.customCode = val; save(); }} 
       />

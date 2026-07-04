@@ -10,6 +10,8 @@
   export let language = 'javascript';
   export let fontSize = 12;
   export let headers: string[] = [];
+  export let bundleParams: string[] = [];
+  export let localVariables: string[] = [];
   export let onChange: (val: string) => void = () => {};
 
   let editorContainer: HTMLElement;
@@ -144,8 +146,32 @@
               suggestions.push({ ...r, insertText: r.label, range });
             }
           });
+          (bundleParams || []).forEach(p => {
+            if (p.toUpperCase().startsWith(word.word.toUpperCase()) || word.word === '') {
+              suggestions.push({
+                label: p,
+                kind: monaco.languages.CompletionItemKind.Variable,
+                detail: `Bundle Parameter (resolves to $row.${p})`,
+                insertText: `$row.${p}`,
+                range
+              });
+            }
+          });
+          (localVariables || []).forEach(v => {
+            if (v.toUpperCase().startsWith(word.word.toUpperCase()) || word.word === '') {
+              if (!suggestions.some(s => s.label === v)) {
+                suggestions.push({
+                  label: v,
+                  kind: monaco.languages.CompletionItemKind.Variable,
+                  detail: `Local Variable (resolves to $row.${v})`,
+                  insertText: `$row.${v}`,
+                  range
+                });
+              }
+            }
+          });
         }
-
+ 
         // 2. High-Productivity Snippets (Only after a dot on a GLOBAL slug)
         const slugMatch = textUntilPosition.match(/GLOBAL\.([a-z0-9_]+)(\[\d+\])?\.([a-z0-9_]*)$/i);
         if (slugMatch) {
@@ -167,7 +193,7 @@
             }));
           }
         }
-
+ 
         // 3. Root Table ($row) Property Completion (Restored for absolute reliability)
         if (textUntilPosition.match(/(?:\$row|row)\.([a-z0-9_]*)$/i)) {
           headers.forEach(h => {
@@ -176,6 +202,26 @@
               kind: monaco.languages.CompletionItemKind.Property,
               detail: 'Active Row Data',
               insertText: h,
+              range,
+              sortText: '0001'
+            });
+          });
+          (bundleParams || []).forEach(p => {
+            suggestions.push({
+              label: p,
+              kind: monaco.languages.CompletionItemKind.Property,
+              detail: 'Bundle Parameter (Prop)',
+              insertText: p,
+              range,
+              sortText: '0001'
+            });
+          });
+          (localVariables || []).forEach(v => {
+            suggestions.push({
+              label: v,
+              kind: monaco.languages.CompletionItemKind.Property,
+              detail: 'Local Variable',
+              insertText: v,
               range,
               sortText: '0001'
             });

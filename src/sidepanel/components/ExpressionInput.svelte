@@ -13,6 +13,7 @@
 
   export let value = '';
   export let headers: string[] = [];
+  export let localVariables: string[] = [];
   export let onChange: (val: string) => void;
   export let placeholder = 'Enter value...';
   export let style = '';
@@ -38,7 +39,7 @@
 
   function updateSuggestions() {
     const cursor = inputEl?.selectionStart || 0;
-    suggestions = getSuggestions(value, cursor, headers, globalTables);
+    suggestions = getSuggestions(value, cursor, headers, globalTables, localVariables);
     showSuggestions = suggestions.length > 0;
     selectedIndex = 0;
   }

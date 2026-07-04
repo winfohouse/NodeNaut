@@ -29,7 +29,12 @@ export class Messenger {
     try {
       return await chrome.runtime.sendMessage(request);
     } catch (error: any) {
-      console.error(`Messenger error [${type}]:`, error);
+      const errMsg = error.message || '';
+      if (errMsg.includes('Could not establish connection') || errMsg.includes('Receiving end does not exist')) {
+        console.warn(`Messenger [${type}]: Service worker is waking up...`);
+      } else {
+        console.error(`Messenger error [${type}]:`, error);
+      }
       return {
         success: false,
         error: {

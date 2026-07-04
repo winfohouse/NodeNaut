@@ -4,8 +4,8 @@
   import { 
     Play, ChevronLeft, Trash2, Code, Settings2, Lock,
     Unlock, ShieldCheck, ShieldAlert, Eraser, Pause, Square,
-    Activity,X,Search, Database, Activity as ActivityIcon, Scissors, Link2,
-    Zap, Layers, Globe
+    Activity, X, Search, Database, Activity as ActivityIcon, Scissors, Link2,
+    Zap, Layers, Globe, Type, Hash, ToggleLeft, Braces, Package, Plus, GitBranch
   } from '@lucide/svelte';
   import { Messenger } from '$shared/api/messenger';
   import { MessageType } from '$shared/constants/messages';
@@ -55,8 +55,11 @@
   let currentError: string | null = null;
   let currentStepIndex: number | null = null;
   let selectedNodeId: string | null = null;
+  let inspectedNodeId: string | null = null;
   let selectedEdgeId: string | null = null;
   let isWiring = false;
+  let showValueMenu = false;
+  let showRefMenu = false;
   let wireSourceId: string | null = null;
   let activeWiringSource: string | null = null;
   let mousePos = { x: 0, y: 0 };
@@ -88,6 +91,7 @@
       await loadWorkflow();
       await checkEngineStatus();
       allWorkflows = await db.workflows.toArray();
+      await loadBundleManifest();
     };
     init();
 
@@ -97,6 +101,10 @@
     const listener = (request: any) => {
       if (request.type === MessageType.HUD_UPDATE) {
         if (request.payload.status) currentStatus = request.payload.status;
+      }
+      if (request.type === 'DB_MODIFIED') {
+        loadWorkflow().catch(() => {});
+        db.workflows.toArray().then(list => { allWorkflows = list; }).catch(() => {});
       }
       if (request.type === MessageType.PICKER_SELECT) {
         const payload = request.payload;
@@ -230,15 +238,74 @@
     currentStatus = 'IDLE';
   }
 
+  function ensureStartNode(graph: any) {
+    if (!graph) return { nodes: [], edges: [] };
+    if (!graph.nodes) graph.nodes = [];
+    if (!graph.edges) graph.edges = [];
+    
+    const hasStartNode = graph.nodes.some((n: any) => n.type === 'START');
+    if (!hasStartNode) {
+      const existingRoot = graph.nodes.find((n: any) => n.isRoot);
+      const startNode = {
+        id: 'start-node',
+        type: 'START',
+        position: { x: 250, y: 100 },
+        isRoot: true,
+        state: {}
+      };
+      graph.nodes.push(startNode);
+      if (existingRoot) {
+        existingRoot.isRoot = false;
+        graph.edges.push({
+          id: crypto.randomUUID(),
+          sourceNodeId: 'start-node',
+          targetNodeId: existingRoot.id,
+          type: 'success'
+        });
+      } else if (graph.nodes.length > 1) {
+        const firstOther = graph.nodes.find((n: any) => n.id !== 'start-node');
+        if (firstOther) {
+          graph.edges.push({
+            id: crypto.randomUUID(),
+            sourceNodeId: 'start-node',
+            targetNodeId: firstOther.id,
+            type: 'success'
+          });
+        }
+      }
+      setTimeout(() => saveWorkflow(), 100);
+    } else {
+      let updated = false;
+      graph.nodes.forEach((n: any) => {
+        if (n.type === 'START') {
+          if (!n.isRoot || n.id !== 'start-node') {
+            n.isRoot = true;
+            n.id = 'start-node';
+            updated = true;
+          }
+        } else {
+          if (n.isRoot) {
+            n.isRoot = false;
+            updated = true;
+          }
+        }
+      });
+      if (updated) {
+        setTimeout(() => saveWorkflow(), 100);
+      }
+    }
+    return graph;
+  }
+
   async function decryptWorkflowData() {
     if (!workflow.is_encrypted) {
-      decryptedGraph = workflow.graph || { nodes: [], edges: [] };
+      decryptedGraph = ensureStartNode(workflow.graph || { nodes: [], edges: [] });
       decryptedSettings = workflow.settings || {};
     } else {
       try {
         const decryptedStr = await VaultService.decrypt(workflow.encrypted_blob!);
         const data = JSON.parse(decryptedStr);
-        decryptedGraph = data.graph || { nodes: [], edges: [] };
+        decryptedGraph = ensureStartNode(data.graph || { nodes: [], edges: [] });
         decryptedSettings = data.settings;
       } catch (e) {
         isLocked = true; 
@@ -366,6 +433,10 @@
 
   function handleDropNode(data: { type: string, x: number, y: number, stateOverride?: string, labelOverride?: string }) {
     const { type, x, y, stateOverride, labelOverride } = data;
+    if (type === 'START') {
+      alert("A workflow can only have one Start node, which is already present.");
+      return;
+    }
 
     const manifest = registry.getManifest(type);
     if (!manifest) return;
@@ -391,7 +462,21 @@
       edges: [...(decryptedGraph?.edges || [])]
     };
     selectedNodeId = id;
+    inspectedNodeId = id;
     saveWorkflow();
+  }
+
+  function handleSelectNode(data: { type: string, stateOverride?: string, labelOverride?: string }) {
+    // Add to center of current view
+    const x = (300 - panX) / zoom;
+    const y = (150 - panY) / zoom;
+    handleDropNode({
+      type: data.type,
+      x,
+      y,
+      stateOverride: data.stateOverride,
+      labelOverride: data.labelOverride
+    });
   }
 
   function handleConnectNode(data: { sourceId: string, targetId: string, portId: string }) {
@@ -514,6 +599,13 @@
 
   // --- Workflow Management ---
   function removeAction(id: string) {
+    if (decryptedGraph) {
+      const node = decryptedGraph.nodes.find((n: any) => n.id === id);
+      if (node && node.type === 'START') {
+        alert("The Start node cannot be deleted.");
+        return;
+      }
+    }
     if (!confirm('Permanent Removal: Are you sure?')) return;
     if (decryptedGraph) {
       decryptedGraph.nodes = decryptedGraph.nodes.filter((n: any) => n.id !== id);
@@ -602,154 +694,34 @@
   }
 
   async function testAction(action: any) {
-    // UNIFY: Support both legacy (root props) and modular (action.state)
-    const rawValue = action.state?.value || action.value || '';
-    const rawSelector = action.state?.selector || action.selector || '';
-    const candidates = action.state?.candidates || action.candidates || [];
-    const interactType = action.state?.interactType || action.interactType || 'click';
-    const timeout = action.state?.timeout || action.timeout || 5000;
-
-    let resolvedValue = await resolveExpression(rawValue);
-    const spec = action.state?.spec || {};
-    
-    // If the value is a reference to a file stored in IndexedDB, fetch it!
-    if (typeof resolvedValue === 'string' && resolvedValue.startsWith('dbfile:')) {
-      const id = resolvedValue.split(':')[1];
-      if (id) {
-        try {
-          const fileData = await FileStore.getFile(id);
-          if (fileData) {
-            resolvedValue = new File([fileData.blob], fileData.name, { type: fileData.type }) as any;
-          }
-        } catch (err) {
-          console.error('[FlowPilot] Failed to load large file from FileStore', err);
-        }
+    let testData = {};
+    const targetTableId = decryptedSettings?.table_id || workflow?.settings?.table_id;
+    if (targetTableId) {
+      const table = await db.data_tables.get(targetTableId);
+      if (table && table.rows?.length) {
+        testData = table.rows[0];
       }
     }
 
-    // If the value is a remote file URL, fetch and inject it!
-    if (typeof resolvedValue === 'string' && (resolvedValue.startsWith('http://') || resolvedValue.startsWith('https://'))) {
-      const isFileInput = spec.type === 'file' || interactType === 'paste';
-      if (isFileInput) {
-        try {
-          const res = await fetch(resolvedValue);
-          if (res.ok) {
-            const blob = await res.blob();
-            const urlParts = resolvedValue.split('/');
-            const name = urlParts[urlParts.length - 1] || 'downloaded_file';
-            resolvedValue = new File([blob], name, { type: blob.type }) as any;
-          }
-        } catch (err) {
-          console.error('[FlowPilot] Failed to fetch remote file for upload', err);
-        }
+    console.log(`[FlowPilot] Testing Node [${action.type}]`, action);
+    const response = await Messenger.send(MessageType.TEST_NODE, {
+      node: action,
+      rowData: testData
+    });
+
+    if (response && response.success) {
+      const result = response.data;
+      if (action.type === 'IF_BRANCH' || action.type === 'WAIT_UNTIL') {
+        const isTrue = result?.nextPort === 'true' || result?.nextPort === 'success';
+        alert(`Logic Test Result: ${isTrue ? 'TRUE' : 'FALSE'}`);
+      } else if (result?.error) {
+        alert(`Test Failed: ${result.error.message || 'Unknown error'}`);
+      } else {
+        alert(`Test completed successfully!`);
       }
-    }
-
-    const resolvedSelector = await resolveExpression(rawSelector);
-
-    const payload = {
-      selector: resolvedSelector,
-      value: resolvedValue || '',
-      candidates,
-      timeout
-    };
-
-    console.log(`[FlowPilot] Testing Node [${action.type}]`, payload);
-
-    if (action.type === 'CLICK') {
-      await Messenger.send(MessageType.DOM_CLICK, payload);
-    } else if (action.type === 'TYPE') {
-      await Messenger.send(MessageType.DOM_FILL, payload);
-    } else if (action.type === 'INTERACT') {
-      await Messenger.send(MessageType.DOM_INTERACT, {
-        ...payload,
-        action: interactType,
-        metadata: action.metadata
-      });
-    } else if (action.type === 'NAVIGATE') {
-      const url = action.state?.url || action.url;
-      const resolvedUrl = await resolveExpression(url);
-      await Messenger.send(MessageType.NAVIGATE as any, { url: resolvedUrl });
-    } else if (action.type === 'IF_BRANCH') {
-      let testData = {};
-      const targetTableId = decryptedSettings?.table_id || workflow?.settings?.table_id;
-      if (targetTableId) {
-        const table = await db.data_tables.get(targetTableId);
-        if (table && table.rows?.length) testData = table.rows[0];
-      }
-      
-      let conditionModel = action.metadata?.conditionModel || action.state?.conditionModel;
-      let isTrue = false;
-      let elapsed = 0;
-      const timeoutMs = conditionModel?.timeout || 0;
-      const pollMs = conditionModel?.poll || 500;
-
-      while (true) {
-        let response;
-        
-        if (conditionModel && conditionModel.mode === 'BUILDER') {
-          // RESOLVE: Deep resolve variables in the model
-          const resolvedModel = JSON.parse(JSON.stringify(conditionModel));
-          const resolveInGroup = async (group: any) => {
-            for (const c of group.conditions) {
-              if (c.type === 'group') await resolveInGroup(c);
-              else {
-                if (c.value1) c.value1 = await resolveExpression(c.value1);
-                if (c.value2) c.value2 = await resolveExpression(c.value2);
-                if (c.selector) c.selector = await resolveExpression(c.selector);
-              }
-            }
-          };
-          await resolveInGroup(resolvedModel.rootGroup);
-          response = await Messenger.send(MessageType.DOM_EVAL, { model: resolvedModel });
-        } else {
-          let codeToEval = resolvedValue;
-          if (conditionModel?.mode === 'CUSTOM') {
-            codeToEval = await resolveExpression(conditionModel.customCode);
-          }
-          
-          const needsTab = codeToEval.includes('querySelectorDeep') || codeToEval.includes('isVisible') || codeToEval.includes('findElement');
-
-          if (needsTab) {
-            response = await Messenger.send(MessageType.DOM_EVAL, { code: codeToEval });
-          } else {
-            response = await Messenger.send('DOM_SCRIPT' as any, { 
-              code: `return (${codeToEval})`, 
-              data: testData 
-            });
-          }
-        }
-
-        if (response.success && (response.data === true || response.data === 'true')) {
-          isTrue = true;
-          break;
-        }
-
-        if (elapsed >= timeoutMs) break;
-
-        await new Promise(r => setTimeout(r, pollMs));
-        elapsed += pollMs;
-      }
-
-      alert(`Logic Test Result: ${isTrue ? 'TRUE (FOLLOW GREEN)' : 'FALSE (FOLLOW RED)'}`);
-    } else if (action.type === 'WAIT_STABILITY') {
-      await Messenger.send(MessageType.DOM_WAIT_STABILITY, { timeout: action.timeout });
-    } else if (action.type === 'SCRIPT') {
-      let testData = {};
-      const targetTableId = decryptedSettings?.table_id || workflow?.settings?.table_id;
-      
-      if (targetTableId) {
-        const table = await db.data_tables.get(targetTableId);
-        if (table && table.rows?.length) {
-          testData = table.rows[0];
-        }
-      }
-      
-      await Messenger.send('DOM_SCRIPT' as any, { 
-        code: action.state?.code || action.value, 
-        data: testData, 
-        tableId: targetTableId
-      });
+    } else {
+      const errMsg = response?.error?.message || 'Unknown error';
+      alert(`Test failed to execute: ${errMsg}`);
     }
   }
 
@@ -879,8 +851,219 @@
     saveWorkflow();
   }
 
+  let currentBundleManifest: any = null;
+  async function loadBundleManifest() {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      const stored = (await chrome.storage.local.get('node_bundles')) as any;
+      const bundles = stored.node_bundles || [];
+      currentBundleManifest = bundles.find((b: any) => b.id === workflowId) || null;
+    }
+  }
+
+  function updateTestProp(key: string, value: any) {
+    if (!decryptedSettings.test_props) decryptedSettings.test_props = {};
+    decryptedSettings.test_props[key] = value;
+    saveWorkflow();
+  }
+
+  async function saveBundleManifest(updatedInputs: any[]) {
+    if (!currentBundleManifest) return;
+    currentBundleManifest.inputs = updatedInputs;
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      const stored = (await chrome.storage.local.get('node_bundles')) as any;
+      const bundles = (stored.node_bundles || []) as any[];
+      const updatedBundles = bundles.map((b: any) => b.id === workflowId ? { ...currentBundleManifest } : b);
+      await chrome.storage.local.set({ node_bundles: updatedBundles });
+      await FlowPilotRegistry.discoverPlugins();
+    }
+    currentBundleManifest = { ...currentBundleManifest };
+  }
+
+  function addBundleValueParam(type: string = 'text') {
+    if (!currentBundleManifest) return;
+    const inputs = currentBundleManifest.inputs || [];
+    const count = inputs.filter((i: any) => !['node_ref', 'node_list', 'bundle_ref'].includes(i.type)).length;
+    const updatedInputs = [...inputs, {
+      name: `value_${count + 1}`,
+      label: `Value ${count + 1}`,
+      type,
+      required: false,
+      defaultValue: ''
+    }];
+    saveBundleManifest(updatedInputs);
+  }
+
+  function addBundleRefParam(type: string = 'node_ref') {
+    if (!currentBundleManifest) return;
+    const inputs = currentBundleManifest.inputs || [];
+    const count = inputs.filter((i: any) => ['node_ref', 'nodes_flow', 'bundle_ref'].includes(i.type)).length;
+    const friendlyNames: Record<string, string> = { node_ref: 'Step', nodes_flow: 'Flow', bundle_ref: 'Bundle' };
+    const updatedInputs = [...inputs, {
+      name: `ref_${count + 1}`,
+      label: `${friendlyNames[type] || 'Reference'} ${count + 1}`,
+      type,
+      required: true,
+      defaultValue: ''
+    }];
+    saveBundleManifest(updatedInputs);
+  }
+
+  const VALUE_TYPES = ['text', 'number', 'boolean', 'expression'];
+  const REF_TYPES = ['node_ref', 'nodes_flow', 'bundle_ref'];
+  const TYPE_LABELS: Record<string, string> = {
+    value: 'Text Input',
+    text: 'Text Input',
+    number: 'Number',
+    boolean: 'Yes / No',
+    expression: 'Formula',
+    node_ref: 'Pick a Step',
+    nodes_flow: 'Nodes Flow',
+    bundle_ref: 'Pick a Bundle'
+  };
+  const TYPE_HINTS: Record<string, string> = {
+    value: 'Any text: URL, selector, message',
+    text: 'Any text: URL, selector, message',
+    number: 'A numeric value: delay, count',
+    boolean: 'A true/false toggle',
+    expression: 'A JavaScript expression',
+    node_ref: 'User picks ONE step to execute in isolation',
+    nodes_flow: 'User picks a starting step, executing the entire connected chain',
+    bundle_ref: 'User picks another Node Bundle'
+  };
+  const TYPE_ICONS: Record<string, any> = {
+    value: Type,
+    text: Type,
+    number: Hash,
+    boolean: ToggleLeft,
+    expression: Braces,
+    node_ref: Play,
+    nodes_flow: GitBranch,
+    bundle_ref: Package
+  };
+
+  function updateBundleParam(index: number, field: string, val: any) {
+    if (!currentBundleManifest) return;
+    const inputs = [...(currentBundleManifest.inputs || [])];
+    inputs[index] = { ...inputs[index], [field]: val };
+    // Auto-enforce constraints when type changes
+    if (field === 'type' && REF_TYPES.includes(val)) {
+      inputs[index].required = true;
+      inputs[index].defaultValue = '';
+    }
+    saveBundleManifest(inputs);
+  }
+
+  async function removeBundleParam(index: number) {
+    if (!currentBundleManifest || !decryptedGraph) return;
+    const param = currentBundleManifest.inputs[index];
+    if (!param) return;
+
+    const paramName = param.name;
+    let isUsed = false;
+    const nodes = decryptedGraph.nodes || [];
+
+    for (const node of nodes) {
+      const stateStr = JSON.stringify(node.state || {});
+      if (stateStr.includes(`{${paramName}}`) || stateStr.includes(`{variables.${paramName}}`)) {
+        isUsed = true;
+        break;
+      }
+    }
+
+    if (isUsed) {
+      if (!confirm(`The parameter "${paramName}" is currently referenced inside your flow nodes. Removing it will strip the references from those node configurations. Proceed?`)) {
+        return;
+      }
+      
+      const cleanNodes = nodes.map(node => {
+        let stateStr = JSON.stringify(node.state || {});
+        if (stateStr.includes(`{${paramName}}`) || stateStr.includes(`{variables.${paramName}}`)) {
+          stateStr = stateStr
+            .replaceAll(`{${paramName}}`, '')
+            .replaceAll(`{variables.${paramName}}`, '');
+          return { ...node, state: JSON.parse(stateStr) };
+        }
+        return node;
+      });
+      
+      decryptedGraph.nodes = cleanNodes;
+      saveWorkflow();
+    } else {
+      if (!confirm(`Are you sure you want to delete parameter "${paramName}"?`)) return;
+    }
+
+    const updatedInputs = currentBundleManifest.inputs.filter((_: any, idx: number) => idx !== index);
+    await saveBundleManifest(updatedInputs);
+  }
+
   $: activeGraph = decryptedGraph || { nodes: [], edges: [] };
   $: activeSettings = decryptedSettings || {};
+  $: localVariables = activeGraph?.nodes
+    ? Array.from(new Set(
+        activeGraph.nodes
+          .map((n: any) => n.state?.variableName || n.state?.varName || n.state?.outputVar)
+          .filter(Boolean)
+      ))
+    : [];
+
+  $: validationErrors = (() => {
+    const errors: Record<string, string[]> = {};
+    if (!workflow || !activeGraph || !activeGraph.nodes) return errors;
+
+    const declaredKeys = new Set(
+      workflow.settings?.is_bundle && currentBundleManifest
+        ? (currentBundleManifest.inputs || []).map((i: any) => i.name)
+        : []
+    );
+
+    if (workflow.settings?.is_bundle && currentBundleManifest) {
+      for (const node of activeGraph.nodes) {
+        const nodeErrors: string[] = [];
+        const stateStr = JSON.stringify(node.state || {});
+
+        const matches = stateStr.matchAll(/\{([a-zA-Z0-9_]+)\}/g);
+        for (const match of matches) {
+          const varName = match[1];
+          if (!declaredKeys.has(varName) && varName !== 'all' && varName !== 'index') {
+            nodeErrors.push(`Reference to undeclared parameter: "${varName}"`);
+          }
+        }
+
+        const matchesVars = stateStr.matchAll(/\{variables\.([a-zA-Z0-9_]+)\}/g);
+        for (const match of matchesVars) {
+          const varName = match[1];
+          if (!declaredKeys.has(varName)) {
+            nodeErrors.push(`Reference to undeclared parameter: "variables.${varName}"`);
+          }
+        }
+
+        if (node.type === 'EXECUTE_NODE_REF') {
+          let refParamName = node.state?.paramName;
+          // Strip curly braces if user typed {ref_1} instead of ref_1
+          if (typeof refParamName === 'string' && refParamName.startsWith('{') && refParamName.endsWith('}')) {
+            refParamName = refParamName.slice(1, -1);
+          }
+          // Also strip variables. prefix
+          if (typeof refParamName === 'string' && refParamName.startsWith('variables.')) {
+            refParamName = refParamName.slice('variables.'.length);
+          }
+          if (refParamName && !declaredKeys.has(refParamName)) {
+            nodeErrors.push(`Referenced parameter "${refParamName}" is not declared`);
+          } else if (refParamName) {
+            const param = (currentBundleManifest.inputs || []).find((i: any) => i.name === refParamName);
+            if (param && param.type !== 'node_ref') {
+              nodeErrors.push(`Parameter "${refParamName}" type must be "Pick a Step"`);
+            }
+          }
+        }
+
+        if (nodeErrors.length > 0) {
+          errors[node.id] = nodeErrors;
+        }
+      }
+    }
+    return errors;
+  })();
 </script>
 
 <div class="editor-shell">
@@ -893,37 +1076,39 @@
       </div>
       <div class="header-actions">
         {#if !isLocked}
-          <div class="control-group">
-            {#if currentStatus === 'FAILED' && currentError}
-               <div class="error-pill fade-in">
-                  <ShieldAlert size={12} />
-                  <span>{currentError}</span>
-               </div>
-            {/if}
-
-            {#if currentStatus !== 'IDLE'}
-              <button class="icon-btn" on:click={handleStop} title="Stop Workflow">
-                <Square size={14} fill="currentColor" class="text-error" />
-              </button>
-            {/if}
-            
-            <Button 
-              variant={currentStatus === 'RUNNING' ? 'ghost' : 'primary'} 
-              glow={currentStatus !== 'RUNNING'} 
-              on:click={handleExecution}
-            >
-              {#if currentStatus === 'IDLE'}
-                <Play slot="icon" size={14} fill="currentColor" />
-                Execute
-              {:else if currentStatus === 'RUNNING'}
-                <Pause slot="icon" size={14} fill="currentColor" />
-                Pause
-              {:else if currentStatus === 'PAUSED'}
-                <Play slot="icon" size={14} fill="currentColor" />
-                Resume
+          {#if !workflow.settings?.is_bundle}
+            <div class="control-group">
+              {#if currentStatus === 'FAILED' && currentError}
+                 <div class="error-pill fade-in">
+                    <ShieldAlert size={12} />
+                    <span>{currentError}</span>
+                 </div>
               {/if}
-            </Button>
-          </div>
+
+              {#if currentStatus !== 'IDLE'}
+                <button class="icon-btn" on:click={handleStop} title="Stop Workflow">
+                  <Square size={14} fill="currentColor" class="text-error" />
+                </button>
+              {/if}
+              
+              <Button 
+                variant={currentStatus === 'RUNNING' ? 'ghost' : 'primary'} 
+                glow={currentStatus !== 'RUNNING'} 
+                on:click={handleExecution}
+              >
+                {#if currentStatus === 'IDLE'}
+                  <Play slot="icon" size={14} fill="currentColor" />
+                  Execute
+                {:else if currentStatus === 'RUNNING'}
+                  <Pause slot="icon" size={14} fill="currentColor" />
+                  Pause
+                {:else if currentStatus === 'PAUSED'}
+                  <Play slot="icon" size={14} fill="currentColor" />
+                  Resume
+                {/if}
+              </Button>
+            </div>
+          {/if}
         {/if}
       </div>
     </header>
@@ -1014,6 +1199,7 @@
                 bind:panY
                 bind:zoom
                 {previews}
+                {validationErrors}
                 selectedNodeId={selectedNodeId}
                 selectedEdgeId={selectedEdgeId}
                 onNodeClick={(id) => { selectedNodeId = id; selectedEdgeId = null; }}
@@ -1022,18 +1208,23 @@
                   const node = activeGraph.nodes.find(n => n.id === id);
                   if (node?.type === 'SCRIPT') {
                     editingScriptId = node.id;
+                  } else {
+                    inspectedNodeId = id;
                   }
+                  selectedNodeId = id;
+                  selectedEdgeId = null;
                 }}
                 onDeleteNode={(id) => removeAction(id)}
                 onDeleteEdge={(id) => removeEdge(id)}
                 onToggleEdgeMode={(id) => toggleEdgeMode(id)}
-                onDeselectAll={() => { selectedNodeId = null; selectedEdgeId = null; }}
+                onDeselectAll={() => { selectedNodeId = null; inspectedNodeId = null; selectedEdgeId = null; }}
                 onDrop={handleDropNode}
                 onConnect={handleConnectNode}
                 onSave={() => saveWorkflow()}
                 />
               
               <Launcher 
+                isBundle={workflow.settings?.is_bundle || false}
                 onDragStart={(type, e) => {
                   if (e.dataTransfer) {
                     e.dataTransfer.effectAllowed = 'copy';
@@ -1041,11 +1232,12 @@
                 }} 
                 onScan={scanPage}
                 onPicker={() => startPicker()}
+                onSelectNode={handleSelectNode}
               />
             </div>
 
-            {#if selectedNodeId}
-              {@const selectedNode = activeGraph.nodes.find(n => n.id === selectedNodeId)}
+            {#if inspectedNodeId}
+              {@const selectedNode = activeGraph.nodes.find(n => n.id === inspectedNodeId)}
               <div class="inspector-side glass fade-in">
                 <header class="inspector-header">
                   <div class="header-main">
@@ -1053,7 +1245,7 @@
                     <h3>{selectedNode?.metadata?.label || 'Node Configuration'}</h3>
                   </div>
                   <div class="header-tools">
-                    <button class="icon-btn" on:click={() => selectedNodeId = null} title="Close Inspector"><X size={16} /></button>
+                    <button class="icon-btn" on:click={() => inspectedNodeId = null} title="Close Inspector"><X size={16} /></button>
                   </div>
                 </header>
 
@@ -1064,7 +1256,10 @@
                       <svelte:component 
                         this={ConfigComponent} 
                         node={selectedNode}
+                        graph={activeGraph}
                         {tableHeaders}
+                        localVariables={localVariables}
+                        bundleParams={currentBundleManifest ? (currentBundleManifest.inputs || []).map((i: any) => i.name) : []}
                         save={() => saveWorkflow()}
                         startPicker={(cb: (data: any) => void, mode: 'step' | 'condition' = 'step') => {
                           isPicking = true;
@@ -1085,14 +1280,16 @@
                 </div>
                 
                 <footer class="inspector-footer">
-                   <Button variant="picker" size="sm" on:click={() => clearNodeEdges(selectedNodeId!)} title="Detach node from all connections">
+                   <Button variant="picker" size="sm" on:click={() => clearNodeEdges(inspectedNodeId!)} title="Detach node from all connections">
                      <Scissors slot="icon" size={14} />
                      Cut All Links
                    </Button>
-                   <Button variant="danger" size="sm" on:click={() => removeAction(selectedNodeId!)}>
-                     <Trash2 slot="icon" size={14} />
-                     Delete Node
-                   </Button>
+                   {#if selectedNode?.type !== 'START'}
+                     <Button variant="danger" size="sm" on:click={() => removeAction(inspectedNodeId!)}>
+                       <Trash2 slot="icon" size={14} />
+                       Delete Node
+                     </Button>
+                   {/if}
                 </footer>
               </div>
             {:else if selectedEdgeId}
@@ -1158,21 +1355,343 @@
         </div>
 
         <div class="tab-pane" class:hidden={activeTab !== 'data'}>
-          <DataTable 
-            workflowId={workflowId} 
-            tableId={decryptedSettings?.table_id || workflow?.settings?.table_id} 
-            onImport={async (id) => { 
-              if (decryptedSettings) {
-                decryptedSettings.table_id = id;
-                await saveWorkflow();
-                await loadWorkflow();
-              }
-            }} 
-            onDataChange={async () => {
-              await updateAllPreviews();
-              await syncVariablesToDOM();
-            }}
-          />
+          {#if workflow.settings?.is_bundle}
+            <div class="bundle-guide-wrap" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; height: 100%; overflow-y: auto;">
+              <div class="guide-card glass" style="padding: 1.25rem; border-radius: 12px; display: flex; flex-direction: column; gap: 0.75rem; background: var(--bg-surface-solid); border: 1px solid var(--border-ui);">
+                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--accent);">
+                  <Layers size={18} />
+                  <h3 style="margin: 0; font-size: 0.95rem; font-weight: bold; color: var(--text-primary);">Bundle Parameters Guide</h3>
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; margin: 0;">
+                  This sequence acts as a reusable subflow. Any parameters defined in its manifest are available as local variables.
+                </p>
+                <div style="background: rgba(59, 130, 246, 0.05); padding: 0.75rem; border-radius: 8px; border: 1px dashed var(--border-ui-heavy); font-size: 0.7rem; color: var(--text-secondary); line-height: 1.45;">
+                  <strong>How to use inside inputs:</strong><br/>
+                  Place the parameter key inside curly braces to resolve its value dynamically. <br/>
+                  For example: type <code style="background: var(--bg-card); padding: 0.1rem 0.25rem; border-radius: 4px; color: var(--accent); font-family: monospace;">{'{username}'}</code> or <code style="background: var(--bg-card); padding: 0.1rem 0.25rem; border-radius: 4px; color: var(--accent); font-family: monospace;">{'{variables.username}'}</code> inside any node's text inputs.
+                </div>
+              </div>
+
+              <div class="guide-card glass" style="padding: 1.25rem; border-radius: 12px; display: flex; flex-direction: column; gap: 0.75rem; background: var(--bg-surface-solid); border: 1px solid var(--border-ui);">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-ui); padding-bottom: 0.5rem;">
+                  <h4 style="margin: 0; font-size: 0.8rem; font-weight: bold; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.35rem;">
+                    <Layers size={14} style="color: var(--accent);" />
+                    Declared Parameters
+                  </h4>
+                </div>
+
+                <!-- Two add buttons -->
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                  <div style="position: relative; flex: 1;" class="param-add-group">
+                    <Button variant="secondary" size="sm" on:click={() => { showValueMenu = !showValueMenu; showRefMenu = false; }} style="width: 100%;">
+                      <Plus size={12} slot="icon" />
+                      Add Value
+                    </Button>
+                    {#if showValueMenu}
+                      <div class="param-type-menu" style="position: absolute; top: 100%; left: 0; right: 0; z-index: 50; background: var(--bg-surface-solid); border: 1px solid var(--border-ui); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-top: 4px; overflow: hidden;">
+                        {#each VALUE_TYPES as vt}
+                          <button
+                            on:click={() => { addBundleValueParam(vt); showValueMenu = false; }}
+                            style="display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.5rem 0.75rem; border: none; background: transparent; cursor: pointer; text-align: left; color: var(--text-primary); transition: background 0.15s;"
+                            class="param-menu-item"
+                          >
+                            <svelte:component this={TYPE_ICONS[vt]} size={12} style="color: var(--accent); flex-shrink: 0;" />
+                            <div style="display: flex; flex-direction: column;">
+                              <span style="font-size: 0.72rem; font-weight: 600; line-height: 1.2;">{TYPE_LABELS[vt]}</span>
+                              <span style="font-size: 0.58rem; color: var(--text-secondary); line-height: 1.2;">{TYPE_HINTS[vt]}</span>
+                            </div>
+                          </button>
+                        {/each}
+                      </div>
+                    {/if}
+                  </div>
+                  <div style="position: relative; flex: 1;" class="param-add-group">
+                    <Button variant="secondary" size="sm" on:click={() => { showRefMenu = !showRefMenu; showValueMenu = false; }} style="width: 100%;">
+                      <Link2 size={12} slot="icon" />
+                      Add Reference
+                    </Button>
+                    {#if showRefMenu}
+                      <div class="param-type-menu" style="position: absolute; top: 100%; left: 0; right: 0; z-index: 50; background: var(--bg-surface-solid); border: 1px solid var(--border-ui); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-top: 4px; overflow: hidden;">
+                        {#each REF_TYPES as rt}
+                          <button
+                            on:click={() => { addBundleRefParam(rt); showRefMenu = false; }}
+                            style="display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.5rem 0.75rem; border: none; background: transparent; cursor: pointer; text-align: left; color: var(--text-primary); transition: background 0.15s;"
+                            class="param-menu-item"
+                          >
+                            <svelte:component this={TYPE_ICONS[rt]} size={12} style="color: var(--warning, #f59e0b); flex-shrink: 0;" />
+                            <div style="display: flex; flex-direction: column;">
+                              <span style="font-size: 0.72rem; font-weight: 600; line-height: 1.2;">{TYPE_LABELS[rt]}</span>
+                              <span style="font-size: 0.58rem; color: var(--text-secondary); line-height: 1.2;">{TYPE_HINTS[rt]}</span>
+                            </div>
+                          </button>
+                        {/each}
+                      </div>
+                    {/if}
+                  </div>
+                </div>
+
+                {#if currentBundleManifest && (currentBundleManifest.inputs || []).length > 0}
+                  <!-- VALUE PARAMETERS SECTION -->
+                  {@const valueParams = (currentBundleManifest.inputs || []).map((p, i) => ({...p, _origIdx: i})).filter(p => !REF_TYPES.includes(p.type))}
+                  {@const refParams = (currentBundleManifest.inputs || []).map((p, i) => ({...p, _origIdx: i})).filter(p => REF_TYPES.includes(p.type))}
+
+                  {#if valueParams.length > 0}
+                    <div style="display: flex; align-items: center; gap: 0.4rem; margin-top: 0.25rem;">
+                      <span style="font-size: 0.65rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; display: flex; align-items: center; gap: 0.25rem;">
+                        <Settings2 size={10} style="color: var(--accent);" />
+                        Value Parameters
+                      </span>
+                      <span style="font-size: 0.55rem; color: var(--text-secondary); opacity: 0.7;">— can have defaults</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+                      {#each valueParams as input}
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-ui); border-left: 3px solid var(--accent);">
+                          <!-- Type badge -->
+                          <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.6rem; font-weight: 700; color: var(--accent); background: rgba(59,130,246,0.08); padding: 0.15rem 0.5rem; border-radius: 4px;">
+                              <svelte:component this={TYPE_ICONS[input.type]} size={10} />
+                              <span>{TYPE_LABELS[input.type] || input.type}</span>
+                            </div>
+                            <span style="font-size: 0.55rem; color: var(--text-secondary); font-style: italic;">{TYPE_HINTS[input.type] || ''}</span>
+                          </div>
+                          <!-- Key + Label row -->
+                          <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 0.15rem;">
+                              <span style="font-size: 0.6rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Param Key</span>
+                              <input
+                                type="text"
+                                value={input.name}
+                                on:input={(e) => updateBundleParam(input._origIdx, 'name', e.currentTarget.value)}
+                                placeholder="e.g. username"
+                                style="background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-ui); padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.75rem; width: 100%; outline: none;"
+                              />
+                            </div>
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 0.15rem;">
+                              <span style="font-size: 0.6rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Label</span>
+                              <input
+                                type="text"
+                                value={input.label || ''}
+                                on:input={(e) => updateBundleParam(input._origIdx, 'label', e.currentTarget.value)}
+                                placeholder="e.g. Username"
+                                style="background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-ui); padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.75rem; width: 100%; outline: none;"
+                              />
+                            </div>
+                          </div>
+                          <!-- Type + Default row -->
+                          <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 0.15rem;">
+                              <span style="font-size: 0.6rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Type</span>
+                              <select
+                                value={input.type}
+                                on:change={(e) => updateBundleParam(input._origIdx, 'type', e.currentTarget.value)}
+                                style="background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-ui); padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.75rem; width: 100%; outline: none; height: 28px;"
+                              >
+                                <optgroup label="Value Types">
+                                  <option value="text">Text Input</option>
+                                  <option value="number">Number</option>
+                                  <option value="boolean">Yes / No</option>
+                                  <option value="expression">Formula</option>
+                                </optgroup>
+                                <optgroup label="Reference Types">
+                                  <option value="node_ref">Pick a Step</option>
+                                  <option value="nodes_flow">Nodes Flow</option>
+                                  <option value="bundle_ref">Pick a Bundle</option>
+                                </optgroup>
+                              </select>
+                            </div>
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 0.15rem;">
+                              <span style="font-size: 0.6rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Default Value</span>
+                              {#if input.type === 'boolean'}
+                                <select
+                                  value={input.defaultValue || 'false'}
+                                  on:change={(e) => updateBundleParam(input._origIdx, 'defaultValue', e.currentTarget.value)}
+                                  style="background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-ui); padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.75rem; width: 100%; outline: none; height: 28px;"
+                                >
+                                  <option value="true">Yes (true)</option>
+                                  <option value="false">No (false)</option>
+                                </select>
+                              {:else if input.type === 'number'}
+                                <input
+                                  type="number"
+                                  value={input.defaultValue || ''}
+                                  on:input={(e) => updateBundleParam(input._origIdx, 'defaultValue', e.currentTarget.value)}
+                                  placeholder="e.g. 1000"
+                                  style="background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-ui); padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.75rem; width: 100%; outline: none;"
+                                />
+                              {:else}
+                                <input
+                                  type="text"
+                                  value={input.defaultValue || ''}
+                                  on:input={(e) => updateBundleParam(input._origIdx, 'defaultValue', e.currentTarget.value)}
+                                  placeholder={input.type === 'expression' ? 'e.g. Date.now()' : 'Default value'}
+                                  style="background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-ui); padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.75rem; width: 100%; outline: none;"
+                                />
+                              {/if}
+                            </div>
+                          </div>
+                          <!-- Footer: Required + Remove -->
+                          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.15rem; border-top: 1px solid var(--border-ui); padding-top: 0.35rem;">
+                            <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.7rem; color: var(--text-primary); cursor: pointer;">
+                              <input
+                                type="checkbox"
+                                checked={input.required || false}
+                                on:change={(e) => updateBundleParam(input._origIdx, 'required', e.currentTarget.checked)}
+                              />
+                              Required
+                            </label>
+                            <Button variant="danger" size="sm" on:click={() => removeBundleParam(input._origIdx)}>
+                              <Trash2 slot="icon" size={10} />
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      {/each}
+                    </div>
+                  {/if}
+
+                  <!-- REFERENCE PARAMETERS SECTION -->
+                  {#if refParams.length > 0}
+                    <div style="display: flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem;">
+                      <span style="font-size: 0.65rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; display: flex; align-items: center; gap: 0.25rem;">
+                        <Link2 size={10} style="color: var(--warning, #f59e0b);" />
+                        Reference Parameters
+                      </span>
+                      <span style="font-size: 0.55rem; color: var(--text-secondary); opacity: 0.7;">— always required, no defaults</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+                      {#each refParams as input}
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-ui); border-left: 3px solid var(--warning, #f59e0b);">
+                          <!-- Type badge -->
+                          <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.6rem; font-weight: 700; color: var(--warning, #f59e0b); background: rgba(245,158,11,0.08); padding: 0.15rem 0.5rem; border-radius: 4px;">
+                              <svelte:component this={TYPE_ICONS[input.type]} size={10} />
+                              <span>{TYPE_LABELS[input.type] || input.type}</span>
+                            </div>
+                            <span style="font-size: 0.55rem; font-weight: 700; color: var(--warning, #f59e0b); background: rgba(245,158,11,0.1); padding: 0.1rem 0.4rem; border-radius: 4px;">⚡ ALWAYS REQUIRED</span>
+                          </div>
+                          <!-- Key + Label row -->
+                          <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 0.15rem;">
+                              <span style="font-size: 0.6rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Param Key</span>
+                              <input
+                                type="text"
+                                value={input.name}
+                                on:input={(e) => updateBundleParam(input._origIdx, 'name', e.currentTarget.value)}
+                                placeholder="e.g. login_step"
+                                style="background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-ui); padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.75rem; width: 100%; outline: none;"
+                              />
+                            </div>
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 0.15rem;">
+                              <span style="font-size: 0.6rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Label</span>
+                              <input
+                                type="text"
+                                value={input.label || ''}
+                                on:input={(e) => updateBundleParam(input._origIdx, 'label', e.currentTarget.value)}
+                                placeholder="e.g. Login Action"
+                                style="background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-ui); padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.75rem; width: 100%; outline: none;"
+                              />
+                            </div>
+                          </div>
+                          <!-- Type row (no default value) -->
+                          <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 0.15rem;">
+                              <span style="font-size: 0.6rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Type</span>
+                              <select
+                                value={input.type}
+                                on:change={(e) => updateBundleParam(input._origIdx, 'type', e.currentTarget.value)}
+                                style="background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-ui); padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.75rem; width: 100%; outline: none; height: 28px;"
+                              >
+                                <optgroup label="Reference Types">
+                                  <option value="node_ref">Pick a Step</option>
+                                  <option value="nodes_flow">Nodes Flow</option>
+                                  <option value="bundle_ref">Pick a Bundle</option>
+                                </optgroup>
+                                <optgroup label="Value Types">
+                                  <option value="text">Text Input</option>
+                                  <option value="number">Number</option>
+                                  <option value="boolean">Yes / No</option>
+                                  <option value="expression">Formula</option>
+                                </optgroup>
+                              </select>
+                            </div>
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 0.15rem;">
+                              <span style="font-size: 0.6rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Default</span>
+                              <div style="font-size: 0.65rem; color: var(--text-secondary); font-style: italic; padding: 0.35rem 0.5rem; background: rgba(245,158,11,0.04); border: 1px dashed var(--border-ui); border-radius: 6px;">
+                                No default — set when used in a flow
+                              </div>
+                            </div>
+                          </div>
+                          <!-- Footer: Required badge + Remove -->
+                          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.15rem; border-top: 1px solid var(--border-ui); padding-top: 0.35rem;">
+                            <span style="font-size: 0.65rem; color: var(--text-secondary); font-style: italic;">User must pick this when using the bundle</span>
+                            <Button variant="danger" size="sm" on:click={() => removeBundleParam(input._origIdx)}>
+                              <Trash2 slot="icon" size={10} />
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      {/each}
+                    </div>
+                  {/if}
+
+                  {#if valueParams.length === 0 && refParams.length === 0}
+                    <div style="font-size: 0.7rem; color: var(--text-secondary); font-style: italic; text-align: center; padding: 1rem; border: 1px dashed var(--border-ui); border-radius: 8px;">
+                      No parameters yet. Use the buttons above to add one.
+                    </div>
+                  {/if}
+                {:else}
+                  <div style="font-size: 0.7rem; color: var(--text-secondary); font-style: italic; text-align: center; padding: 1rem; border: 1px dashed var(--border-ui); border-radius: 8px;">
+                    No parameters yet. Use the buttons above to add one.
+                  </div>
+                {/if}
+              </div>
+
+              <div class="guide-card glass" style="padding: 1.25rem; border-radius: 12px; display: flex; flex-direction: column; gap: 0.75rem; background: var(--bg-surface-solid); border: 1px solid var(--border-ui);">
+                <h4 style="margin: 0; font-size: 0.8rem; font-weight: bold; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.05em;">Developer Guidance</h4>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.7rem; color: var(--text-secondary); line-height: 1.45;">
+                  <div>
+                    <strong style="color: var(--accent); display: block; margin-bottom: 0.2rem;">1. Map & Run Referenced Nodes (Props)</strong>
+                    To invoke a node passed to your bundle (e.g. invoking a node reference parameter named <code style="font-family: monospace; color: var(--text-primary);">v1</code>):
+                    <ol style="margin: 0.25rem 0; padding-left: 1.25rem;">
+                      <li>Drag a new <strong style="color: var(--text-primary);">Execute Node Reference</strong> node onto the canvas.</li>
+                      <li>Set its parameter key config field to <code style="font-family: monospace; color: var(--accent);">v1</code>.</li>
+                      <li>The subflow will execute that external subnode step-by-step in the context of the subflow.</li>
+                    </ol>
+                  </div>
+                  <div>
+                    <strong style="color: var(--accent); display: block; margin-bottom: 0.2rem;">2. Use Dynamic Expressions</strong>
+                    To map string values/formulas (e.g. <code style="font-family: monospace; color: var(--text-primary);">v2</code>):
+                    <div style="padding-left: 0.5rem; border-left: 2px solid var(--border-ui-heavy);">
+                      Simply type <code style="font-family: monospace; color: var(--accent);">{'{v2}'}</code> inside any textboxes (e.g., Click selector, URL, Type inputs). The subflow runner resolves this dynamically.
+                    </div>
+                  </div>
+                  <div>
+                    <strong style="color: var(--accent); display: block; margin-bottom: 0.2rem;">3. Return Values to Parent Flow</strong>
+                    All variables modified during subflow execution are scoped locally, but automatically copied back to parent scope on termination.
+                    <div style="padding-left: 0.5rem; border-left: 2px solid var(--border-ui-heavy);">
+                      For example: run a Script node executing <code style="font-family: monospace; color: var(--text-primary);">await vars.set('result', data)</code>. When the subflow exits, the parent flow can reference <code style="font-family: monospace; color: var(--accent);">{'{result}'}</code>.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {:else}
+            <DataTable 
+              workflowId={workflowId} 
+              tableId={decryptedSettings?.table_id || workflow?.settings?.table_id} 
+              onImport={async (id) => { 
+                if (decryptedSettings) {
+                  decryptedSettings.table_id = id;
+                  await saveWorkflow();
+                  await loadWorkflow();
+                }
+              }} 
+              onDataChange={async () => {
+                await updateAllPreviews();
+                await syncVariablesToDOM();
+              }}
+            />
+          {/if}
         </div>
 
         <div class="tab-pane" class:hidden={activeTab !== 'settings'}>
@@ -1198,6 +1717,35 @@
                 </label>
               </div>
             </div>
+
+            {#if workflow.settings?.is_bundle && currentBundleManifest}
+              <div class="settings-card glass test-props-card">
+                <div class="card-header">
+                  <Play size={16} />
+                  <h3>Standalone Test Properties</h3>
+                </div>
+                <p class="zone-desc" style="margin-top: -0.5rem; font-size: 0.65rem; color: var(--text-muted);">
+                  Set mock parameter values to test-execute this node bundle standalone.
+                </p>
+
+                {#each currentBundleManifest.inputs || [] as input}
+                  <div class="setting-item" style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <label for="test-prop-{input.name}" style="font-size: 0.75rem; font-weight: 700; color: var(--text-primary);">{input.label || input.name} ({input.type})</label>
+                    <input 
+                      id="test-prop-{input.name}"
+                      type="text" 
+                      value={decryptedSettings?.test_props?.[input.name] ?? ''} 
+                      on:input={(e) => updateTestProp(input.name, e.currentTarget.value)}
+                      placeholder="e.g. {input.placeholder || 'mock value'}"
+                      style="width: 100%; padding: 0.5rem; background: var(--bg-surface-solid); border: 1px solid var(--border-ui); border-radius: 8px; color: var(--text-primary); font-size: 0.75rem;" 
+                    />
+                  </div>
+                {/each}
+                {#if (currentBundleManifest.inputs || []).length === 0}
+                  <span style="font-size: 0.7rem; color: var(--text-muted); font-style: italic; text-align: center;">No input parameters declared in bundle manifest.</span>
+                {/if}
+              </div>
+            {/if}
 
             <div class="settings-card glass security">
               <div class="card-header">
@@ -1280,6 +1828,8 @@
           <CodeEditor 
             value={editingNode.state?.code || editingNode.value || ''} 
             headers={tableHeaders} 
+            bundleParams={currentBundleManifest ? (currentBundleManifest.inputs || []).map((i: any) => i.name) : []}
+            localVariables={localVariables}
             fontSize={editorFontSize}
             onChange={(val) => { 
               if (editingNode.state) {
@@ -1297,6 +1847,9 @@
 </div>
 
 <style>
+  .param-menu-item:hover {
+    background: var(--bg-hover, rgba(59,130,246,0.08)) !important;
+  }
   .full-editor-overlay {
     position: fixed;
     top: 0;
@@ -1434,7 +1987,7 @@
   .lock-input input { padding: 1rem; border: 1px solid var(--border-ui); border-radius: 1rem; background: var(--bg-surface-solid); color: var(--text-primary); text-align: center; font-size: 1rem; outline: none; }
   .error-msg { margin-top: 1rem; color: var(--status-error); font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
 
-  .settings-wrap { display: flex; flex-direction: column; gap: 1.5rem; }
+  .settings-wrap { display: flex; flex-direction: column; gap: 1.5rem; height: 100%; overflow-y: auto; padding-right: 0.25rem; }
   .settings-card { padding: 1.5rem; border-radius: 1.5rem; background: var(--bg-card); border: 1px solid var(--border-ui); display: flex; flex-direction: column; gap: 1.25rem; }
   .card-header { display: flex; align-items: center; gap: 0.75rem; color: var(--accent); border-bottom: 1px solid var(--border-ui); padding-bottom: 0.75rem; margin-bottom: 0.25rem; }
   .card-header h3 { font-size: 0.8rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-primary); margin: 0; }

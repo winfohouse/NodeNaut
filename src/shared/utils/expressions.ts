@@ -36,6 +36,17 @@ const GLOBAL_METHODS: AutocompleteSuggestion[] = [
   // Browser Context
   { label: 'Page URL', value: '{{window.location.href}}', type: 'script', description: 'Get current page address' },
   { label: 'Page Title', value: '{{document.title}}', type: 'script', description: 'Get website title' },
+  { label: 'FLOW.listTabs()', value: '{{await FLOW.listTabs()}}', type: 'script', description: 'List all open browser tabs (SCRIPT node)' },
+  { label: 'FLOW.searchHistory()', value: '{{await FLOW.searchHistory("query")}}', type: 'script', description: 'Search browser history (SCRIPT/Formula node)' },
+  { label: 'FLOW.listExtensions()', value: '{{await FLOW.listExtensions()}}', type: 'script', description: 'List active browser extensions (SCRIPT node)' },
+
+  // Database Writing (Use inside SCRIPT nodes)
+  { label: 'Table.add()', value: '{{Table.add({ col1: "val1" });}}', type: 'script', description: 'Add new row to active dataset (SCRIPT node)' },
+  { label: 'Table.update()', value: '{{Table.update($row.index, { col1: "val1" });}}', type: 'script', description: 'Update row in active dataset (SCRIPT node)' },
+  { label: 'Table.delete()', value: '{{Table.delete($row.index);}}', type: 'script', description: 'Delete row from active dataset (SCRIPT node)' },
+  { label: 'GLOBAL.slug.update() (Variables)', value: '{{GLOBAL.my_global_vars.update({ key1: "val1" });}}', type: 'script', description: 'Update global variables (SCRIPT node)' },
+  { label: 'GLOBAL.slug.update() (Dataset)', value: '{{GLOBAL.my_global_dataset.update(0, { col1: "val1" });}}', type: 'script', description: 'Update row in global dataset (SCRIPT node)' },
+  { label: 'Update active row variable', value: '{{$row["my_var"] = "new value";}}', type: 'script', description: 'Update variable in active row scope (SCRIPT node)' },
 ];
 
 /**
@@ -99,13 +110,15 @@ export function getSuggestions(
   input: string, 
   cursorIndex: number, 
   headers: string[] = [], 
-  globalTables: any[] = []
+  globalTables: any[] = [],
+  localVariables: string[] = []
 ): AutocompleteSuggestion[] {
   const textBefore = input.substring(0, cursorIndex);
   
   const lastDouble = textBefore.lastIndexOf('{{');
   const lastSingle = textBefore.lastIndexOf('{');
-  const lastCalc = textBefore.toLowerCase().lastIndexOf('calc(');
+  const textBeforeLower = textBefore.toLowerCase();
+  const lastCalc = textBeforeLower.lastIndexOf('calc(');
   
   // 1. Inside {{ script }}
   if (lastDouble !== -1 && lastDouble >= lastSingle - 1) {
@@ -118,6 +131,12 @@ export function getSuggestions(
         value: `{{$row["${h}"]}}`, 
         type: 'script' as const,
         description: `Current row column: ${h}`
+      })),
+      ...localVariables.map(v => ({
+        label: `$row["${v}"]`,
+        value: `{{$row["${v}"]}}`,
+        type: 'script' as const,
+        description: `Local variable: ${v}`
       }))
     ];
 
@@ -147,6 +166,7 @@ export function getSuggestions(
     const term = textBefore.substring(lastCalc + 5).toLowerCase();
     const suggestions: AutocompleteSuggestion[] = [
       ...headers.map(h => ({ label: h, value: `{${h}}`, type: 'column' as const, description: `Row value: ${h}` })),
+      ...localVariables.map(v => ({ label: v, value: `{${v}}`, type: 'column' as const, description: `Local variable: ${v}` })),
       ...GLOBAL_METHODS.filter(m => m.type === 'calc')
     ];
 
@@ -173,6 +193,7 @@ export function getSuggestions(
     const term = textBefore.substring(lastSingle + 1).toLowerCase();
     const suggestions: AutocompleteSuggestion[] = [
       ...headers.map(h => ({ label: h, value: `{${h}}`, type: 'column' as const, description: `Row value: ${h}` })),
+      ...localVariables.map(v => ({ label: v, value: `{${v}}`, type: 'column' as const, description: `Local variable: ${v}` })),
       ...GLOBAL_METHODS.filter(m => m.type === 'script') 
     ];
 
@@ -217,6 +238,13 @@ export function applySuggestion(currentVal: string, suggestion: string, cursorIn
     splitIndex = (lastDouble !== -1 && lastDouble >= lastSingle - 1) ? lastDouble : lastSingle;
   } else if (suggestion.startsWith('{')) {
     splitIndex = lastSingle;
+  } else {
+    // Fallback: Use whatever trigger index opened the autocomplete dropdown
+    if (lastDouble !== -1 && lastDouble >= lastSingle - 1) {
+      splitIndex = lastDouble;
+    } else if (lastSingle !== -1) {
+      splitIndex = lastSingle;
+    }
   }
 
   if (splitIndex === -1) return currentVal;

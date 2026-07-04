@@ -4,8 +4,13 @@ export interface InteractState {
   interactType: string;
   selector: string;
   value?: string;
+  saveMode?: 'local' | 'global' | 'table';
+  variableName?: string;
+  globalTableSlug?: string;
+  globalTableKey?: string;
+  tableColumn?: string;
   candidates?: Record<string, unknown>[];
-  metadata?: Record<string, string | number | boolean>;
+  metadata?: Record<string, any>;
 }
 
 export const manifest: NodeManifest<InteractState> = {
@@ -15,6 +20,11 @@ export const manifest: NodeManifest<InteractState> = {
     interactType: 'click',
     selector: '',
     value: '',
+    saveMode: 'local',
+    variableName: '',
+    globalTableSlug: '',
+    globalTableKey: '',
+    tableColumn: '',
     candidates: [],
     metadata: {}
   },

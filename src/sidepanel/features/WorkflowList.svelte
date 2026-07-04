@@ -8,8 +8,14 @@
 
   export let onEdit: (id: string) => void;
 
-  const workflows = liveQuery(() => db.workflows.toArray());
-  const workflowCount = liveQuery(() => db.workflows.count());
+  const workflows = liveQuery(async () => {
+    const list = await db.workflows.toArray();
+    return list.filter(w => !w.settings?.is_bundle);
+  });
+  const workflowCount = liveQuery(async () => {
+    const list = await db.workflows.toArray();
+    return list.filter(w => !w.settings?.is_bundle).length;
+  });
 
   let recordingId: string | null = null;
   let fileInput: HTMLInputElement;
@@ -22,14 +28,36 @@
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        const workflow = JSON.parse(e.target?.result as string);
-        workflow.id = crypto.randomUUID();
-        workflow.created_at = Date.now();
-        workflow.updated_at = Date.now();
-        await db.workflows.add(workflow);
+        const payload = JSON.parse(e.target?.result as string);
+        
+        // Handle combined Node Bundle (.flowbundle) package
+        if (payload.manifest && payload.workflow) {
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            const stored = await chrome.storage.local.get('node_bundles');
+            const nodeBundles = stored.node_bundles || [];
+            const exists = nodeBundles.some((b: any) => b.id === payload.manifest.id);
+            let updated;
+            if (exists) {
+              if (!confirm(`A Node Bundle with ID "${payload.manifest.id}" already exists. Overwrite?`)) return;
+              updated = nodeBundles.map((b: any) => b.id === payload.manifest.id ? payload.manifest : b);
+            } else {
+              updated = [...nodeBundles, payload.manifest];
+            }
+            await chrome.storage.local.set({ node_bundles: updated });
+          }
+          await db.workflows.put(payload.workflow);
+          alert(`Node Bundle "${payload.manifest.name}" imported successfully!`);
+          return;
+        }
+
+        // Standard flow import
+        payload.id = crypto.randomUUID();
+        payload.created_at = Date.now();
+        payload.updated_at = Date.now();
+        await db.workflows.add(payload);
       } catch (err) {
         console.error('Import failed:', err);
-        alert('Invalid .flowpilot file');
+        alert('Invalid file format');
       }
     };
     reader.readAsText(file);
@@ -91,7 +119,18 @@
       id,
       name: `New Sequence ${($workflowCount || 0) + 1}`,
       version: 1,
-      actions: [],
+      graph: {
+        nodes: [
+          {
+            id: 'start-node',
+            type: 'START',
+            position: { x: 250, y: 100 },
+            isRoot: true,
+            state: {}
+          }
+        ],
+        edges: []
+      },
       settings: {},
       created_at: Date.now(),
       updated_at: Date.now()

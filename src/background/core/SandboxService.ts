@@ -40,7 +40,7 @@ export class SandboxService {
 
   async execute(payload: any): Promise<ExtResponse> {
     console.log('[FlowPilot] Starting Sandbox Execution Request');
-    const { code, data, tableId } = payload;
+    const { code, data, tableId, rowIndex } = payload;
     const scriptId = Math.random().toString(36).substring(2);
     
     try {
@@ -82,6 +82,7 @@ export class SandboxService {
             code,
             data,
             tableId,
+            rowIndex,
             ...scriptData
           }
         });

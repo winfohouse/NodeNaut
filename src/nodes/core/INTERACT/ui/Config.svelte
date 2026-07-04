@@ -7,6 +7,8 @@
   import SearchableSelect from '$sidepanel/components/SearchableSelect.svelte';
   import ExpressionInput from '$sidepanel/components/ExpressionInput.svelte';
   import Button from '$sidepanel/components/Button.svelte';
+  import { db } from '$shared/services/db';
+  import { onMount } from 'svelte';
 
   export let node: any;
   export let save: () => void;
@@ -14,6 +16,16 @@
   export let highlight: (node: any) => void;
   export let testAction: (node: any) => void;
   export let tableHeaders: string[] = [];
+  export let localVariables: string[] = [];
+
+  let globalTables: any[] = [];
+  onMount(async () => {
+    try {
+      globalTables = await db.global_tables.toArray();
+    } catch (e) {
+      console.error(e);
+    }
+  });
 
   const interactionOptions = [
     { label: 'Left Click', value: 'click', category: 'Mouse', icon: MousePointer2 },
@@ -119,9 +131,87 @@
       <ExpressionInput 
         value={node.state.value || ''} 
         headers={tableHeaders} 
+        localVariables={localVariables}
         placeholder={selectedOpt.valuePlaceholder || 'Parameter for this action...'} 
         onChange={(val) => { node.state.value = val; save(); }} 
       />
+    </div>
+  {/if}
+
+  {#if selectedOpt?.value.startsWith('extract')}
+    <div class="payload-wrap">
+      <div class="payload-header">
+        <Database size={10} />
+        <span>Save Extraction</span>
+      </div>
+      
+      <div class="save-mode-selector" style="display: flex; gap: 0.25rem; background: var(--bg-surface); border: 1px solid var(--border-ui); border-radius: 8px; padding: 0.2rem;">
+        <button 
+          type="button"
+          class="mode-tab-btn" 
+          class:active={node.state.saveMode === 'local' || !node.state.saveMode} 
+          on:click={() => { node.state.saveMode = 'local'; save(); }}
+          style="flex: 1; text-align: center; border: none; background: none; font-size: 0.65rem; padding: 0.35rem; border-radius: 6px; cursor: pointer; color: var(--text-secondary); transition: all 0.2s;"
+        >Local Var</button>
+        <button 
+          type="button"
+          class="mode-tab-btn" 
+          class:active={node.state.saveMode === 'table'} 
+          on:click={() => { node.state.saveMode = 'table'; save(); }}
+          style="flex: 1; text-align: center; border: none; background: none; font-size: 0.65rem; padding: 0.35rem; border-radius: 6px; cursor: pointer; color: var(--text-secondary); transition: all 0.2s;"
+        >Active Table</button>
+        <button 
+          type="button"
+          class="mode-tab-btn" 
+          class:active={node.state.saveMode === 'global'} 
+          on:click={() => { node.state.saveMode = 'global'; save(); }}
+          style="flex: 1; text-align: center; border: none; background: none; font-size: 0.65rem; padding: 0.35rem; border-radius: 6px; cursor: pointer; color: var(--text-secondary); transition: all 0.2s;"
+        >Global Var</button>
+      </div>
+
+      {#if node.state.saveMode === 'local' || !node.state.saveMode}
+        <input 
+          type="text" 
+          bind:value={node.state.variableName} 
+          placeholder="Variable name (e.g. price, link)" 
+          style="background: var(--bg-surface-solid); border: 1px solid var(--border-ui); border-radius: 8px; color: var(--text-primary); font-size: 0.75rem; outline: none; padding: 0.5rem 0.75rem; width: 100%; box-sizing: border-box;"
+          on:change={save} 
+        />
+      {:else}
+        {#if node.state.saveMode === 'table'}
+          <select 
+            bind:value={node.state.tableColumn} 
+            on:change={save}
+            style="background: var(--bg-surface-solid); border: 1px solid var(--border-ui); border-radius: 8px; color: var(--text-primary); font-size: 0.75rem; outline: none; padding: 0.5rem 0.75rem; width: 100%; box-sizing: border-box; height: 34px;"
+          >
+            <option value="">-- Choose Dataset Column --</option>
+            {#each tableHeaders as h}
+              <option value={h}>{h}</option>
+            {/each}
+          </select>
+        {:else if node.state.saveMode === 'global'}
+          <div style="display: flex; flex-direction: column; gap: 0.5rem; width: 100%;">
+            <select 
+              bind:value={node.state.globalTableSlug} 
+              on:change={save}
+              style="background: var(--bg-surface-solid); border: 1px solid var(--border-ui); border-radius: 8px; color: var(--text-primary); font-size: 0.75rem; outline: none; padding: 0.5rem 0.75rem; width: 100%; box-sizing: border-box; height: 34px;"
+            >
+              <option value="">-- Choose Global Table --</option>
+              {#each globalTables as t}
+                <option value={t.slug}>{t.name} ({t.type === 'VARIABLES' ? 'Vars' : 'Dataset'})</option>
+              {/each}
+            </select>
+            
+            <input 
+              type="text" 
+              bind:value={node.state.globalTableKey} 
+              placeholder="Variable / Field Key" 
+              style="background: var(--bg-surface-solid); border: 1px solid var(--border-ui); border-radius: 8px; color: var(--text-primary); font-size: 0.75rem; outline: none; padding: 0.5rem 0.75rem; width: 100%; box-sizing: border-box;"
+              on:change={save} 
+            />
+          </div>
+        {/if}
+      {/if}
     </div>
   {/if}
 
@@ -150,4 +240,6 @@
   .payload-header { display: flex; align-items: center; gap: 0.5rem; font-size: 0.55rem; font-weight: 900; color: var(--text-muted); text-transform: uppercase; }
   
   .test-row { padding-top: 0.5rem; border-top: 1px solid var(--border-ui); }
+  .mode-tab-btn:hover { background: var(--bg-card-hover) !important; color: var(--text-primary) !important; }
+  .mode-tab-btn.active { background: var(--accent) !important; color: white !important; }
 </style>

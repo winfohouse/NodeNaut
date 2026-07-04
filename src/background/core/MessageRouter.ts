@@ -7,6 +7,7 @@ import { VaultService } from '$shared/services/vault';
 import { ResilientTabSender } from './ResilientTabSender';
 
 import { SandboxService } from './SandboxService';
+import { McpBridge } from '../mcp/McpBridge';
 
 export class MessageRouter {
   private workflowRunner = WorkflowRunner.getInstance();
@@ -81,9 +82,41 @@ export class MessageRouter {
         const tableRes = await this.handleTableAction(message);
         chrome.runtime.sendMessage({ type: 'FP_TABLE_RES', callId, data: tableRes.data || tableRes.success });
         return;
+      case 'FP_GET_TEXT_REQ':
+        try {
+          const text = await McpBridge.getInstance().getElementText(message.selector);
+          chrome.runtime.sendMessage({ type: 'FP_GET_TEXT_RES', callId, data: text });
+        } catch (e: any) {
+          chrome.runtime.sendMessage({ type: 'FP_GET_TEXT_RES', callId, data: null });
+        }
+        return;
       case 'FP_GLOBAL_REQ':
         const globalRes = await this.handleGlobalAction(message);
         chrome.runtime.sendMessage({ type: 'FP_GLOBAL_RES', callId, data: globalRes.data || globalRes.success });
+        return;
+      case 'FP_LIST_TABS_REQ':
+        try {
+          const list = await (McpBridge.getInstance() as any).listTabs();
+          chrome.runtime.sendMessage({ type: 'FP_LIST_TABS_RES', callId, data: list });
+        } catch (e: any) {
+          chrome.runtime.sendMessage({ type: 'FP_LIST_TABS_RES', callId, data: [] });
+        }
+        return;
+      case 'FP_SEARCH_HISTORY_REQ':
+        try {
+          const results = await (McpBridge.getInstance() as any).searchHistory({ text: message.text, maxResults: message.maxResults });
+          chrome.runtime.sendMessage({ type: 'FP_SEARCH_HISTORY_RES', callId, data: results });
+        } catch (e: any) {
+          chrome.runtime.sendMessage({ type: 'FP_SEARCH_HISTORY_RES', callId, data: [] });
+        }
+        return;
+      case 'FP_LIST_EXTENSIONS_REQ':
+        try {
+          const list = await (McpBridge.getInstance() as any).listExtensions();
+          chrome.runtime.sendMessage({ type: 'FP_LIST_EXTENSIONS_RES', callId, data: list });
+        } catch (e: any) {
+          chrome.runtime.sendMessage({ type: 'FP_LIST_EXTENSIONS_RES', callId, data: [] });
+        }
         return;
     }
   }
@@ -117,6 +150,18 @@ export class MessageRouter {
         const resolved = await this.workflowRunner.resolvePreview(request.payload.expression, request.payload.tableId);
         return { success: true, data: resolved };
 
+      case MessageType.TEST_NODE:
+        try {
+          const result = await this.workflowRunner.executeSingleNode(
+            request.payload.node,
+            request.payload.rowData || {},
+            request.payload.sessionId || crypto.randomUUID()
+          );
+          return { success: true, data: result };
+        } catch (error: any) {
+          return { success: false, error: { code: 'TEST_NODE_ERROR', message: error.message } };
+        }
+
       case MessageType.DOM_SCAN:
       case MessageType.DOM_FILL:
       case MessageType.DOM_CLICK:
@@ -135,7 +180,15 @@ export class MessageRouter {
         return await this.forwardWithRetry(request);
       
       case MessageType.NAVIGATE:
-        const targetTabId = request.payload.tabId || this.tabCoordinator.getPrimaryTabId();
+        let targetTabId = request.payload.tabId || this.tabCoordinator.getPrimaryTabId();
+        if (!targetTabId) {
+          try {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            targetTabId = tab?.id ?? null;
+          } catch (e) {
+            console.error('[MessageRouter] Failed to query active tab', e);
+          }
+        }
         if (targetTabId) {
           await chrome.tabs.update(targetTabId, { url: request.payload.url });
           return { success: true };
@@ -159,6 +212,17 @@ export class MessageRouter {
         } catch (e) {}
         // Handled directly by sidepanel listeners, do not echo
         return { success: true };
+
+      case 'GET_MCP_STATUS' as any:
+        return { success: true, data: { connected: McpBridge.getInstance().isConnected() } };
+
+      case 'TEST_MCP_ROUTE' as any:
+        try {
+          const result = await McpBridge.getInstance().testDispatch(request.payload.method, request.payload.params || {});
+          return { success: true, data: result };
+        } catch (e: any) {
+          return { success: false, error: { code: 'TEST_ROUTE_ERROR', message: e.message } };
+        }
 
       case 'GLOBAL_ACTION' as any:
         return await this.handleGlobalAction(request.payload);
@@ -257,6 +321,7 @@ export class MessageRouter {
 
             const toStore = table.is_secure ? { blob: await VaultService.encrypt(JSON.stringify(updated)) } : updated;
             await db.global_tables.update(table.id, { data: toStore });
+            chrome.runtime.sendMessage({ type: 'DB_MODIFIED' }).catch(() => {});
             return { success: true };
         }
       } else {
@@ -269,6 +334,7 @@ export class MessageRouter {
           case 'delete': actualTable.rows.splice(index, 1); break;
         }
         await db.data_tables.update(data.tableId, { rows: actualTable.rows });
+        chrome.runtime.sendMessage({ type: 'DB_MODIFIED' }).catch(() => {});
         return { success: true };
       }
       return { success: false };
@@ -283,11 +349,17 @@ export class MessageRouter {
       if (!table) return { success: false, error: { code: 'TABLE_NOT_FOUND', message: 'Table not found' } };
       switch (action) {
         case 'add': table.rows.push(rowData); break;
-        case 'update': if(table.rows[index]) table.rows[index] = { ...table.rows[index], ...rowData }; break;
+        case 'update': 
+          if(table.rows[index]) {
+            table.rows[index] = { ...table.rows[index], ...rowData };
+            this.workflowRunner.updateActiveSessionsTableData(tableId, index, rowData);
+          }
+          break;
         case 'delete': table.rows.splice(index, 1); break;
         case 'getAll': return { success: true, data: table.rows };
       }
       await db.data_tables.update(tableId, { rows: table.rows });
+      chrome.runtime.sendMessage({ type: 'DB_MODIFIED' }).catch(() => {});
       return { success: true };
     } catch (e: any) { return { success: false, error: { code: 'TABLE_ACTION_ERROR', message: e.message } }; }
   }

@@ -8,6 +8,7 @@
   export let save: () => void;
   export let testAction: (node: any) => void;
   export let tableHeaders: string[] = [];
+  export let localVariables: string[] = [];
 </script>
 
 <div class="node-config-plugin">
@@ -26,6 +27,7 @@
     <ExpressionInput 
       value={node.state.url || ''} 
       headers={tableHeaders} 
+      localVariables={localVariables}
       placeholder="https://example.com or &#123;Target URL&#125;" 
       onChange={(val) => { node.state.url = val; save(); }} 
     />

@@ -16,7 +16,9 @@ export default class ScriptNode implements NodePlugin<ScriptState, ScriptOutput>
     // Run in the safe Neural Sandbox
     const response = await services.sandbox.execute<Record<string, unknown>, ScriptOutput>({
       code: node.state.code || '',
-      data: await ctx.vars.get<Record<string, unknown>>('all') 
+      data: await ctx.vars.get<Record<string, unknown>>('all'),
+      tableId: node.tableId,
+      rowIndex: node.rowIndex
     });
 
     if (response.success) {

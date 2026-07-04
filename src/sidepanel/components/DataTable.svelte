@@ -127,7 +127,16 @@
 
   onMount(() => {
     window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+    const listener = (request: any) => {
+      if (request.type === 'DB_MODIFIED' && tableId) {
+        loadTable(tableId).catch(() => {});
+      }
+    };
+    chrome.runtime.onMessage.addListener(listener);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+      chrome.runtime.onMessage.removeListener(listener);
+    };
   });
 
   async function updateTable(recordHistory = true) {
