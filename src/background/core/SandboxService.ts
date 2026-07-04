@@ -94,11 +94,25 @@ export class SandboxService {
   }
 
   private async ensureOffscreen() {
+    // If chrome.offscreen is not available (like in Firefox), append a hidden iframe to the background page's DOM
+    if (typeof chrome.offscreen === 'undefined') {
+      if (document.getElementById('fp-sandbox-iframe')) return;
+      console.log('[FlowPilot] Appending hidden sandbox iframe for Firefox...');
+      const iframe = document.createElement('iframe');
+      iframe.id = 'fp-sandbox-iframe';
+      iframe.src = 'offscreen.html';
+      iframe.style.display = 'none';
+      (document.body || document.documentElement).appendChild(iframe);
+      return;
+    }
+
     try {
-      const existingContexts = await (chrome.runtime as any).getContexts({
-        contextTypes: ['OFFSCREEN_DOCUMENT']
-      });
-      if (existingContexts.length > 0) return;
+      if (typeof (chrome.runtime as any).getContexts === 'function') {
+        const existingContexts = await (chrome.runtime as any).getContexts({
+          contextTypes: ['OFFSCREEN_DOCUMENT']
+        });
+        if (existingContexts.length > 0) return;
+      }
     } catch (e) {}
 
     console.log('[FlowPilot] Initializing Offscreen Service...');

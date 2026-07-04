@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "node scripts/copy-binaries.js && vite build && vite build --mode content",
+    "build:firefox": "node scripts/build-firefox.js",
     "preview": "vite preview",
-    "check": "svelte-check --tsconfig ./tsconfig.json"
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "package": "node scripts/package.js"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.1.2",

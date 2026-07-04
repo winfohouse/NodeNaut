@@ -1,0 +1,23 @@
+FlowPilot Non-Commercial License
+
+Copyright (c) 2026
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software with the following rights and restrictions:
+
+1. PERSONAL & NON-COMMERCIAL USE:
+You are free to download (e.g., from the GitHub Releases page), install, and use this Software for personal, non-commercial purposes. 
+
+2. MODIFICATION & FORKING:
+You are free to fork the repository, inspect the source code, modify it for your personal use, and submit suggestions (via Pull Requests or Issues) back to the original repository.
+
+3. NO COMMERCIAL USE:
+You may NOT use this Software, in whole or in part, for any commercial, business, or revenue-generating purposes. This includes, but is not limited to:
+  a. Selling or sublicensing the Software.
+  b. Using the Software to provide a commercial service (e.g., SaaS).
+  c. Incorporating the Software into a commercial product.
+  d. Using the Software internally within a business or corporate environment to automate business tasks.
+
+4. REDISTRIBUTION:
+You may not distribute modified or unmodified copies of the Software to the public for commercial gain. Any public forks must carry this exact same license and prominently state that the software is not for commercial use.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

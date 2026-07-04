@@ -1,2 +1,26 @@
-node_modules
-./*.md
+# Dependencies
+node_modules/
+mcp-server/node_modules/
+
+# Build outputs
+dist/
+dist-firefox/
+mcp-server/dist/
+
+# Release archives
+releases/
+*.zip
+
+# Environment
+.env
+.env.local
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
