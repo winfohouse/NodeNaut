@@ -5,8 +5,8 @@ import DynamicAddonConfig from './DynamicAddonConfig.svelte';
 // Placeholder for Svelte Component type if not using full svelte types
 type SvelteComponent = any; 
 
-export class FlowPilotRegistry {
-  private static instance: FlowPilotRegistry;
+export class NodeNautRegistry {
+  private static instance: NodeNautRegistry;
   private plugins: Map<string, NodePlugin<any, any>> = new Map();
   private manifests: Map<string, NodeManifest<any>> = new Map();
   private views: Map<string, SvelteComponent> = new Map();
@@ -14,11 +14,11 @@ export class FlowPilotRegistry {
 
   private constructor() {}
 
-  static getInstance(): FlowPilotRegistry {
-    if (!FlowPilotRegistry.instance) {
-      FlowPilotRegistry.instance = new FlowPilotRegistry();
+  static getInstance(): NodeNautRegistry {
+    if (!NodeNautRegistry.instance) {
+      NodeNautRegistry.instance = new NodeNautRegistry();
     }
-    return FlowPilotRegistry.instance;
+    return NodeNautRegistry.instance;
   }
 
   register(plugin: NodePlugin<any, any>, view?: SvelteComponent, config?: SvelteComponent) {
@@ -51,7 +51,7 @@ export class FlowPilotRegistry {
   }
 
   static async discoverPlugins() {
-    const registry = FlowPilotRegistry.getInstance();
+    const registry = NodeNautRegistry.getInstance();
     
     const nodeFiles = import.meta.glob<Record<string, any>>('$nodes/**/*.ts', { eager: true });
     const svelteFiles = import.meta.glob<Record<string, any>>('$nodes/**/*.svelte', { eager: true });

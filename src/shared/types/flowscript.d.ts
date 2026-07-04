@@ -1,6 +1,6 @@
 /**
- * FlowPilot Elite FlowScript API Definitions
- * (C) 2026 FlowPilot Systems
+ * NodeNaut Elite FlowScript API Definitions
+ * (C) 2026 NodeNaut Systems
  */
 
 /** High-level browser automation commands */
@@ -15,7 +15,7 @@ declare interface FlowEngine {
   wait(ms: number): Promise<void>;
   /** Scans the current page for interactive nodes and returns them. */
   scan(): Promise<any[]>;
-  /** Logs a message to the FlowPilot sidepanel debug console. */
+  /** Logs a message to the NodeNaut sidepanel debug console. */
   log(message: any): void;
   /** Waits for an element to appear or be interactive. Times out after 15s by default. */
   waitFor(selector: string, timeout?: number): Promise<boolean>;
@@ -87,5 +87,5 @@ declare interface GlobalDataset<T = any> extends GlobalCollection<T> {}
 /** Displays a native alert dialog on the page. */
 declare function alert(message: any): Promise<void>;
 
-/** Logs a message to the FlowPilot sidepanel debug console. */
+/** Logs a message to the NodeNaut sidepanel debug console. */
 declare function log(message: any): void;

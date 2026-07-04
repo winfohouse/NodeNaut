@@ -76,7 +76,7 @@
     const files = e.dataTransfer?.files;
     if (files && files.length > 0) {
       for (const file of Array.from(files)) {
-        if (file.name.endsWith('.flowpilot') || file.name.endsWith('.json')) {
+        if (file.name.endsWith('.nodenaut') || file.name.endsWith('.json')) {
           processFile(file);
         }
       }
@@ -144,7 +144,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${workflow.name.replace(/\s+/g, '_').toLowerCase()}.flowpilot`;
+    a.download = `${workflow.name.replace(/\s+/g, '_').toLowerCase()}.nodenaut`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -168,7 +168,7 @@
   on:dragleave|preventDefault={() => isDragging = false}
   on:drop|preventDefault={handleDrop}
 >
-  <input type="file" accept=".flowpilot,.json" multiple bind:this={fileInput} on:change={handleImport} style="display: none;" />
+  <input type="file" accept=".nodenaut,.json" multiple bind:this={fileInput} on:change={handleImport} style="display: none;" />
   
   <header class="view-header">
     <div class="header-text">

@@ -1,5 +1,5 @@
 export class FileStore {
-  private static dbName = 'FlowPilotFilesDB';
+  private static dbName = 'NodeNautFilesDB';
   private static storeName = 'files';
 
   private static getDB(): Promise<IDBDatabase> {

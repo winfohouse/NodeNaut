@@ -32,7 +32,7 @@ async function buildFirefox() {
     // 2. Replace side_panel with sidebar_action for Firefox sidebar support
     delete manifest.side_panel;
     manifest.sidebar_action = {
-      default_title: "FlowPilot",
+      default_title: "NodeNaut",
       default_panel: "index.html"
     };
 
@@ -44,7 +44,7 @@ async function buildFirefox() {
     // 4. Add Gecko browser-specific settings
     manifest.browser_specific_settings = {
       gecko: {
-        id: "flowpilot@extension",
+        id: "nodenaut@extension",
         strict_min_version: "109.0"
       }
     };

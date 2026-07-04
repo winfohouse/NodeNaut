@@ -77,7 +77,7 @@ export interface GlobalTable {
   created_at: number;
 }
 
-export class FlowPilotDatabase extends Dexie {
+export class NodeNautDatabase extends Dexie {
   workflows!: Table<Workflow>;
   workflow_steps!: Table<WorkflowStep>;
   workflow_versions!: Table<WorkflowVersion>;
@@ -87,7 +87,7 @@ export class FlowPilotDatabase extends Dexie {
   global_tables!: Table<GlobalTable>;
 
   constructor() {
-    super('FlowPilotDB');
+    super('NodeNautDB');
     this.version(7).stores({
       workflows: 'id, name, created_at, updated_at, is_encrypted',
       workflow_steps: 'id, workflow_id, order',
@@ -142,4 +142,4 @@ export class FlowPilotDatabase extends Dexie {
   }
 }
 
-export const db = new FlowPilotDatabase();
+export const db = new NodeNautDatabase();

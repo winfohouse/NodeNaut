@@ -2,8 +2,8 @@
   import * as Icons from '@lucide/svelte';
   export let node: any;
 
-  import { FlowPilotRegistry } from './Registry';
-  const registry = FlowPilotRegistry.getInstance();
+  import { NodeNautRegistry } from './Registry';
+  const registry = NodeNautRegistry.getInstance();
   const manifest = registry.getManifest(node.type) as any;
 
   function getIcon(name: string) {

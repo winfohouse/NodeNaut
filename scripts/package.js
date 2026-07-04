@@ -45,16 +45,16 @@ async function packageExtensions() {
     const pkg = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
     const version = pkg.version;
 
-    console.log(`📦 Packaging FlowPilot v${version}...`);
+    console.log(`📦 Packaging NodeNaut v${version}...`);
 
     if (fs.existsSync(distChrome)) {
-      await zipDirectory(distChrome, path.join(outDir, `flowpilot-chrome-v${version}.zip`));
+      await zipDirectory(distChrome, path.join(outDir, `nodenaut-chrome-v${version}.zip`));
     } else {
       console.warn('⚠️ Chrome dist folder not found. Run "npm run build" first.');
     }
 
     if (fs.existsSync(distFirefox)) {
-      await zipDirectory(distFirefox, path.join(outDir, `flowpilot-firefox-v${version}.zip`));
+      await zipDirectory(distFirefox, path.join(outDir, `nodenaut-firefox-v${version}.zip`));
     } else {
       console.warn('⚠️ Firefox dist folder not found. Run "npm run build:firefox" first.');
     }

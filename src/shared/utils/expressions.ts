@@ -1,5 +1,5 @@
 /**
- * FlowPilot Expression Intelligence Utility
+ * NodeNaut Expression Intelligence Utility
  */
 
 export interface AutocompleteSuggestion {

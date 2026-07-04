@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "FlowPilot",
+  "name": "NodeNaut",
   "version": "0.2.3",
   "description": "Elite Programmable Browser Workflow & Smart Form Automation Platform",
   "permissions": [
@@ -30,7 +30,7 @@
     "default_path": "index.html"
   },
   "action": {
-    "default_title": "Open FlowPilot Sidepanel"
+    "default_title": "Open NodeNaut Sidepanel"
   },
   "content_scripts": [
     {

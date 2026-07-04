@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { FlowPilotRegistry } from '$framework/Registry';
+  import { NodeNautRegistry } from '$framework/Registry';
   import { X, AlertTriangle } from '@lucide/svelte';
   
   // Standardizing on Svelte 5 prop-based callbacks for high-performance and minification safety
@@ -36,7 +36,7 @@
   let canvasEl: HTMLElement;
   let nodeHeights: Record<string, number> = {};
 
-  const registry = FlowPilotRegistry.getInstance();
+  const registry = NodeNautRegistry.getInstance();
 
   function handleWheel(e: WheelEvent) {
     if (e.ctrlKey || e.metaKey) {

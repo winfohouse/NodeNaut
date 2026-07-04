@@ -3,7 +3,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FlowPilot MCP</title>
+<title>NodeNaut MCP</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -290,7 +290,7 @@ html.light .sidebar { background: rgba(255, 255, 255, 0.95); }
 <aside class="sidebar">
 <div class="sidebar-logo">
 <svg viewBox="0 0 32 32" fill="none"><defs><linearGradient id="lg" x1="0" y1="0" x2="32" y2="32"><stop offset="0%" stop-color="#06b6d4"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient></defs><path d="M16 2L28 9v14l-12 7L4 23V9l12-7z" fill="url(#lg)" opacity="0.15" stroke="url(#lg)" stroke-width="1.5"/><path d="M10 14l4 4 8-8" stroke="url(#lg)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-<div><div class="logo-text">FlowPilot</div><div class="logo-sub">MCP Server</div></div>
+<div><div class="logo-text">NodeNaut</div><div class="logo-sub">MCP Server</div></div>
 </div>
 <nav class="sidebar-nav" id="sidebarNav">
 <div class="nav-item active" data-page="dashboard">
@@ -335,14 +335,14 @@ html.light .sidebar { background: rgba(255, 255, 255, 0.95); }
 
 <!-- ── PAGE: Dashboard ── -->
 <div class="page active" id="page-dashboard">
-<div class="page-header"><h1>Dashboard</h1><p>FlowPilot MCP Server Overview</p></div>
+<div class="page-header"><h1>Dashboard</h1><p>NodeNaut MCP Server Overview</p></div>
 <div class="page-content">
 <div class="conn-banner glass" id="connBanner">
 <div style="display:flex;align-items:center;gap:16px">
 <div class="banner-dot off" id="bannerDot"></div>
 <div class="banner-text">
 <h3 id="bannerTitle">Extension Disconnected</h3>
-<p id="bannerDesc">Waiting for FlowPilot Chrome extension to connect...</p>
+<p id="bannerDesc">Waiting for NodeNaut Chrome extension to connect...</p>
 </div>
 </div>
 <button class="btn btn-secondary btn-sm" id="btnReconnect" onclick="reconnectNow()">Sync / Connect Now</button>
@@ -384,7 +384,7 @@ html.light .sidebar { background: rgba(255, 255, 255, 0.95); }
 
 <!-- ── PAGE: AI Clients ── -->
 <div class="page" id="page-clients">
-<div class="page-header"><h1>AI Clients</h1><p>Configure FlowPilot with your favorite AI applications</p></div>
+<div class="page-header"><h1>AI Clients</h1><p>Configure NodeNaut with your favorite AI applications</p></div>
 <div class="page-content">
 <div class="clients-grid" id="clientsGrid"></div>
 </div>
@@ -439,13 +439,13 @@ html.light .sidebar { background: rgba(255, 255, 255, 0.95); }
 </div>
 <div class="setting-group glass">
 <div class="setting-title">&#x2139; About</div>
-<div class="setting-row"><span class="setting-key">Product</span><span class="setting-val">FlowPilot MCP</span></div>
+<div class="setting-row"><span class="setting-key">Product</span><span class="setting-val">NodeNaut MCP</span></div>
 <div class="setting-row"><span class="setting-key">Transport</span><span class="setting-val">stdio + WebSocket</span></div>
 <div class="setting-row"><span class="setting-key">Protocol</span><span class="setting-val">Model Context Protocol</span></div>
 <div class="setting-row"><span class="setting-key">License</span><span class="setting-val">MIT</span></div>
 </div>
 </div>
-<div class="credits">Built with &#x2764; by FlowPilot &mdash; <a href="https://modelcontextprotocol.io" target="_blank">MCP Specification</a></div>
+<div class="credits">Built with &#x2764; by NodeNaut &mdash; <a href="https://modelcontextprotocol.io" target="_blank">MCP Specification</a></div>
 </div>
 </div>
 
@@ -453,7 +453,7 @@ html.light .sidebar { background: rgba(255, 255, 255, 0.95); }
 
 <script>
 /* ═══════════════════════════════════════
-   FlowPilot MCP Dashboard — App Script
+   NodeNaut MCP Dashboard — App Script
    NO template literals allowed here.
    ═══════════════════════════════════════ */
 
@@ -561,7 +561,7 @@ html.light .sidebar { background: rgba(255, 255, 255, 0.95); }
       if (!extensionConnected) {
         var desc = document.getElementById('bannerDesc');
         if (desc) {
-          desc.innerHTML = 'Extension is still offline. <strong>Tip:</strong> Click the FlowPilot icon in your Chrome toolbar to open the Sidepanel and wake up the service worker!';
+          desc.innerHTML = 'Extension is still offline. <strong>Tip:</strong> Click the NodeNaut icon in your Chrome toolbar to open the Sidepanel and wake up the service worker!';
         }
       }
     }, 1500);
@@ -654,7 +654,7 @@ html.light .sidebar { background: rgba(255, 255, 255, 0.95); }
       statusEl.textContent = 'Extension Online';
       bannerDot.className = 'banner-dot on';
       bannerTitle.textContent = 'Extension Connected';
-      bannerDesc.textContent = 'FlowPilot Chrome extension is active. ' + manifests.length + ' tools available.';
+      bannerDesc.textContent = 'NodeNaut Chrome extension is active. ' + manifests.length + ' tools available.';
       if (setExtConn) setExtConn.textContent = 'Connected';
       setExtConn.style.color = '#10b981';
       
@@ -668,7 +668,7 @@ html.light .sidebar { background: rgba(255, 255, 255, 0.95); }
       statusEl.textContent = 'Extension Offline';
       bannerDot.className = 'banner-dot off';
       bannerTitle.textContent = 'Extension Disconnected';
-      bannerDesc.textContent = 'Waiting for FlowPilot Chrome extension to connect...';
+      bannerDesc.textContent = 'Waiting for NodeNaut Chrome extension to connect...';
       if (setExtConn) setExtConn.textContent = 'Disconnected';
       setExtConn.style.color = '#ef4444';
       
@@ -755,7 +755,7 @@ html.light .sidebar { background: rgba(255, 255, 255, 0.95); }
   /* ──── AI Clients ──── */
   function renderClients() {
     var grid = document.getElementById('clientsGrid');
-    var ep = serverInfo.execPath || '/path/to/flowpilot';
+    var ep = serverInfo.execPath || '/path/to/nodenaut';
     var epEscaped = escapeHtml(ep);
     var isWin = serverInfo.platform === 'win32';
     var epJson = ep.replace(/\\\\/g, '\\\\\\\\').replace(/"/g, '\\\\"');
@@ -764,57 +764,57 @@ html.light .sidebar { background: rgba(255, 255, 255, 0.95); }
       {
         icon: '&#x1f916;',
         name: 'Claude Desktop',
-        desc: 'Add FlowPilot to Claude Desktop for full MCP tool access. Auto-configured on first launch.',
+        desc: 'Add NodeNaut to Claude Desktop for full MCP tool access. Auto-configured on first launch.',
         configPath: isWin ? '%APPDATA%\\\\Claude\\\\claude_desktop_config.json' : '~/Library/Application Support/Claude/claude_desktop_config.json',
-        json: '{\\n  "mcpServers": {\\n    "flowpilot": {\\n      "command": "' + epJson + '",\\n      "args": []\\n    }\\n  }\\n}',
+        json: '{\\n  "mcpServers": {\\n    "nodenaut": {\\n      "command": "' + epJson + '",\\n      "args": []\\n    }\\n  }\\n}',
         steps: '<strong>1.</strong> Open Claude Desktop settings<br><strong>2.</strong> Navigate to Developer &gt; Edit Config<br><strong>3.</strong> Paste the JSON below and restart Claude'
       },
       {
         icon: '&#x26a1;',
         name: 'Cursor',
-        desc: 'Enable FlowPilot in Cursor IDE through MCP server settings.',
+        desc: 'Enable NodeNaut in Cursor IDE through MCP server settings.',
         configPath: 'Settings > Features > MCP > Add Server',
-        json: '{\\n  "mcpServers": {\\n    "flowpilot": {\\n      "command": "' + epJson + '"\\n    }\\n  }\\n}',
+        json: '{\\n  "mcpServers": {\\n    "nodenaut": {\\n      "command": "' + epJson + '"\\n    }\\n  }\\n}',
         steps: '<strong>1.</strong> Open Cursor Settings<br><strong>2.</strong> Go to Features &gt; MCP<br><strong>3.</strong> Click "Add Server" and paste the config'
       },
       {
         icon: '&#x1f3c4;',
         name: 'Windsurf (Codeium)',
-        desc: 'Connect FlowPilot to Windsurf for AI-powered browser automation.',
+        desc: 'Connect NodeNaut to Windsurf for AI-powered browser automation.',
         configPath: isWin ? '%USERPROFILE%\\\\.codeium\\\\windsurf\\\\mcp_config.json' : '~/.codeium/windsurf/mcp_config.json',
-        json: '{\\n  "mcpServers": {\\n    "flowpilot": {\\n      "command": "' + epJson + '"\\n    }\\n  }\\n}',
+        json: '{\\n  "mcpServers": {\\n    "nodenaut": {\\n      "command": "' + epJson + '"\\n    }\\n  }\\n}',
         steps: '<strong>1.</strong> Create or edit the config file at the path above<br><strong>2.</strong> Paste the JSON below<br><strong>3.</strong> Restart Windsurf'
       },
       {
         icon: '&#x1f48e;',
         name: 'VS Code (Copilot)',
-        desc: 'Add FlowPilot as an MCP server in your VS Code project.',
+        desc: 'Add NodeNaut as an MCP server in your VS Code project.',
         configPath: '.vscode/mcp.json (in project root)',
-        json: '{\\n  "servers": {\\n    "flowpilot": {\\n      "type": "stdio",\\n      "command": "' + epJson + '"\\n    }\\n  }\\n}',
+        json: '{\\n  "servers": {\\n    "nodenaut": {\\n      "type": "stdio",\\n      "command": "' + epJson + '"\\n    }\\n  }\\n}',
         steps: '<strong>1.</strong> Create <strong>.vscode/mcp.json</strong> in your project<br><strong>2.</strong> Paste the JSON below<br><strong>3.</strong> Reload VS Code window'
       },
       {
         icon: '&#x1f52c;',
         name: 'Cline',
-        desc: 'Add FlowPilot to the Cline VS Code extension for browser control.',
+        desc: 'Add NodeNaut to the Cline VS Code extension for browser control.',
         configPath: 'Cline Sidebar > MCP Servers > Add',
-        json: '{\\n  "mcpServers": {\\n    "flowpilot": {\\n      "command": "' + epJson + '"\\n    }\\n  }\\n}',
+        json: '{\\n  "mcpServers": {\\n    "nodenaut": {\\n      "command": "' + epJson + '"\\n    }\\n  }\\n}',
         steps: '<strong>1.</strong> Open the Cline sidebar in VS Code<br><strong>2.</strong> Click MCP Servers &gt; Add<br><strong>3.</strong> Paste the config JSON'
       },
       {
         icon: '&#x2728;',
         name: 'Zed',
-        desc: 'Register FlowPilot as a context server in the Zed editor.',
+        desc: 'Register NodeNaut as a context server in the Zed editor.',
         configPath: isWin ? '%APPDATA%\\\\Zed\\\\settings.json' : '~/.config/zed/settings.json',
-        json: '{\\n  "context_servers": {\\n    "flowpilot": {\\n      "command": {\\n        "path": "' + epJson + '"\\n      }\\n    }\\n  }\\n}',
+        json: '{\\n  "context_servers": {\\n    "nodenaut": {\\n      "command": {\\n        "path": "' + epJson + '"\\n      }\\n    }\\n  }\\n}',
         steps: '<strong>1.</strong> Open your Zed settings file<br><strong>2.</strong> Add the context_servers block<br><strong>3.</strong> Restart Zed'
       },
       {
         icon: '&#x1f300;',
         name: 'Gemini CLI / Antigravity',
-        desc: 'Connect FlowPilot to Google Gemini CLI or Antigravity.',
+        desc: 'Connect NodeNaut to Google Gemini CLI or Antigravity.',
         configPath: isWin ? '%USERPROFILE%\\\\.gemini\\\\settings.json' : '~/.gemini/settings.json',
-        json: '{\\n  "mcpServers": [\\n    {\\n      "name": "flowpilot",\\n      "command": "' + epJson + '"\\n    }\\n  ]\\n}',
+        json: '{\\n  "mcpServers": [\\n    {\\n      "name": "nodenaut",\\n      "command": "' + epJson + '"\\n    }\\n  ]\\n}',
         steps: '<strong>1.</strong> Create or edit the settings file<br><strong>2.</strong> Add the mcpServers array entry<br><strong>3.</strong> Restart Gemini CLI'
       },
       {
@@ -871,7 +871,7 @@ html.light .sidebar { background: rgba(255, 255, 255, 0.95); }
       container.innerHTML = '<div class="disconnected-state">' +
         '<div class="disc-icon">&#x1f50c;</div>' +
         '<h3>Extension Not Connected</h3>' +
-        '<p>The FlowPilot Chrome extension must be running and connected to browse available tools.</p>' +
+        '<p>The NodeNaut Chrome extension must be running and connected to browse available tools.</p>' +
         '</div>';
       return;
     }

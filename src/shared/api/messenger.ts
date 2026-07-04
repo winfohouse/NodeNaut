@@ -59,7 +59,7 @@ export class Messenger {
       return await chrome.tabs.sendMessage(tabId, request);
     } catch (error: any) {
       // Use warn here as the background script often has resilience/retry logic
-      console.warn(`[FlowPilot] IPC Connection Warning [${type}] on tab ${tabId}: ${error.message}. This may be handled by automatic re-injection.`);
+      console.warn(`[NodeNaut] IPC Connection Warning [${type}] on tab ${tabId}: ${error.message}. This may be handled by automatic re-injection.`);
       return {
         success: false,
         error: {

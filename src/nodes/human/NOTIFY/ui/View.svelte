@@ -2,7 +2,7 @@
   import { Bell, AlertTriangle } from '@lucide/svelte';
   export let node: any;
 
-  $: title = node.state?.title || 'FlowPilot';
+  $: title = node.state?.title || 'NodeNaut';
   $: message = node.state?.message || 'Workflow notification message';
   $: isAlert = node.state?.type === 'alert';
 </script>

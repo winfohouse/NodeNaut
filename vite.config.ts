@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
       lib: {
         entry: resolve(__dirname, 'src/content/index.ts'),
         formats: ['iife'],
-        name: 'FlowPilotContent',
+        name: 'NodeNautContent',
         fileName: () => 'assets/content.js',
       },
     } : {

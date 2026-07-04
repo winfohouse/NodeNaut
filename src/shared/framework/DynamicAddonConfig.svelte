@@ -11,8 +11,8 @@
   export let tableHeaders: string[] = [];
   export let bundleParams: string[] = [];
 
-  import { FlowPilotRegistry } from './Registry';
-  const registry = FlowPilotRegistry.getInstance();
+  import { NodeNautRegistry } from './Registry';
+  const registry = NodeNautRegistry.getInstance();
   const manifest = registry.getManifest(node.type) as any;
   const configSchema = manifest?.configSchema || [];
 

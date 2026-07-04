@@ -10,7 +10,7 @@ export const manifest: NodeManifest<NotifyState> = {
   type: 'NOTIFY',
   label: 'Notify Me',
   initialState: {
-    title: 'FlowPilot',
+    title: 'NodeNaut',
     message: 'Workflow execution update',
     type: 'system'
   },

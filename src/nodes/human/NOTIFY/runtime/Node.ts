@@ -7,7 +7,7 @@ export default class NotifyNode implements NodePlugin<NotifyState> {
   async execute(ctx: ExecutionContext<NotifyState>): Promise<NodeResult> {
     const { node, vars, logger } = ctx;
     
-    const resolvedTitle = await vars.resolve(node.state?.title || 'FlowPilot');
+    const resolvedTitle = await vars.resolve(node.state?.title || 'NodeNaut');
     const resolvedMessage = await vars.resolve(node.state?.message || 'Workflow notification message');
     const type = node.state?.type || 'system';
 

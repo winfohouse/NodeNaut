@@ -1,6 +1,6 @@
 import { db } from '$shared/services/db';
 import { WorkflowRunner } from '../core/WorkflowRunner';
-import { FlowPilotRegistry } from '$framework/Registry';
+import { NodeNautRegistry } from '$framework/Registry';
 import { TabCoordinator } from '../core/TabCoordinator';
 import { ResilientTabSender } from '../core/ResilientTabSender';
 import { MessageType } from '$shared/constants/messages';
@@ -160,7 +160,7 @@ export class McpBridge {
   }
 
   async testDispatch(method: string, params: Record<string, any>): Promise<any> {
-    const registry = FlowPilotRegistry.getInstance();
+    const registry = NodeNautRegistry.getInstance();
     const plugin = registry.getPlugin(method);
     if (!plugin) {
       throw new Error(`Unknown node plugin type: ${method}`);
@@ -398,7 +398,7 @@ export class McpBridge {
 
   // ========== DYNAMIC NODE OPERATIONS ==========
   private async listNodeTypes() {
-    const registry = FlowPilotRegistry.getInstance();
+    const registry = NodeNautRegistry.getInstance();
     const manifests = registry.getAllManifests();
     console.log('[MCP Bridge] listNodeTypes manifests count:', manifests.length, 'Registry instance manifests size:', (registry as any).manifests?.size);
     return manifests.map(m => ({
@@ -413,7 +413,7 @@ export class McpBridge {
     if (!workflow) throw new Error(`Workflow not found: ${params.flowId}`);
     if (!workflow.graph) workflow.graph = { nodes: [], edges: [] };
 
-    const manifest = FlowPilotRegistry.getInstance().getManifest(params.nodeType);
+    const manifest = NodeNautRegistry.getInstance().getManifest(params.nodeType);
     if (!manifest) throw new Error(`Unknown node type: ${params.nodeType}. Use list_node_types to see available types.`);
 
     const nodeId = crypto.randomUUID();
@@ -575,7 +575,7 @@ export class McpBridge {
       }
       return res;
     } catch (err: any) {
-      console.warn('[FlowPilot] Scripting API failed, falling back to tab sender:', err.message);
+      console.warn('[NodeNaut] Scripting API failed, falling back to tab sender:', err.message);
       const result = await ResilientTabSender.send(tabId, MessageType.DOM_EVAL, { code });
       return result.data !== undefined ? result.data : result;
     }
@@ -601,7 +601,7 @@ export class McpBridge {
       });
       return results?.[0]?.result ?? null;
     } catch (err: any) {
-      console.warn('[FlowPilot] getElementText scripting failed:', err.message);
+      console.warn('[NodeNaut] getElementText scripting failed:', err.message);
       return this.runJs(`document.querySelector("${selector.replace(/"/g, '\\"')}")?.innerText`);
     }
   }
@@ -738,7 +738,7 @@ export class McpBridge {
     };
     const updated = bundles.filter((b: any) => b.id !== params.id).concat(manifest);
     await chrome.storage.local.set({ node_bundles: updated });
-    await FlowPilotRegistry.discoverPlugins();
+    await NodeNautRegistry.discoverPlugins();
     return { success: true };
   }
 
@@ -760,7 +760,7 @@ export class McpBridge {
     return [
       {
         name: 'list_flows',
-        description: 'List all workflows stored in FlowPilot database. Returns workflow metadata such as ID, name, nodeCount, edgeCount, encrypted status, settings, created time, and updated time.',
+        description: 'List all workflows stored in NodeNaut database. Returns workflow metadata such as ID, name, nodeCount, edgeCount, encrypted status, settings, created time, and updated time.',
         inputSchema: { type: 'object', properties: {} }
       },
       {
@@ -859,7 +859,7 @@ export class McpBridge {
       },
       {
         name: 'list_node_types',
-        description: 'Dynamically list all registered node types available in FlowPilot. This includes core, browser, logic, developer, human, and custom addon/bundle nodes. AI should use this to understand what node types are available and what their initialState schemas look like.',
+        description: 'Dynamically list all registered node types available in NodeNaut. This includes core, browser, logic, developer, human, and custom addon/bundle nodes. AI should use this to understand what node types are available and what their initialState schemas look like.',
         inputSchema: { type: 'object', properties: {} }
       },
       {
@@ -940,7 +940,7 @@ export class McpBridge {
       },
       {
         name: 'list_tables',
-        description: 'List all user data tables (datasets) stored in FlowPilot.',
+        description: 'List all user data tables (datasets) stored in NodeNaut.',
         inputSchema: { type: 'object', properties: {} }
       },
       {
@@ -994,7 +994,7 @@ export class McpBridge {
       },
       {
         name: 'list_globals',
-        description: 'List all global variables tables and datasets configured in FlowPilot.',
+        description: 'List all global variables tables and datasets configured in NodeNaut.',
         inputSchema: { type: 'object', properties: {} }
       },
       {

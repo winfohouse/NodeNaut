@@ -68,7 +68,7 @@ export class ExtensionBridge {
           if (msg.type === 'register_dashboard') {
             clientType = 'dashboard';
             this.dashboardSockets.add(ws);
-            console.error('[FlowPilot] Dashboard client connected');
+            console.error('[NodeNaut] Dashboard client connected');
 
             // Send server metadata
             this.sendTo(ws, {
@@ -97,7 +97,7 @@ export class ExtensionBridge {
           // ── Route Test from Dashboard ──
           if (msg.type === 'route_test_request') {
             if (!this.isExtensionConnected) {
-              this.sendTo(ws, { type: 'route_test_response', success: false, error: 'Chrome Extension is not connected. Open FlowPilot in the browser sidepanel.' });
+              this.sendTo(ws, { type: 'route_test_response', success: false, error: 'Chrome Extension is not connected. Open NodeNaut in the browser sidepanel.' });
               return;
             }
             const id = crypto.randomUUID();
@@ -110,7 +110,7 @@ export class ExtensionBridge {
           if (msg.type === 'register_extension') {
             clientType = 'extension';
             this.extensionWs = ws;
-            console.error('[FlowPilot] Chrome Extension connected');
+            console.error('[NodeNaut] Chrome Extension connected');
 
             // Fetch dynamic manifests and MCP tools from the extension
             await this.refreshManifests();
@@ -127,7 +127,7 @@ export class ExtensionBridge {
           if (clientType === 'unknown' && msg.type !== 'register_dashboard') {
             clientType = 'extension';
             this.extensionWs = ws;
-            console.error('[FlowPilot] Chrome Extension connected (fallback)');
+            console.error('[NodeNaut] Chrome Extension connected (fallback)');
 
             // Fetch dynamic manifests and MCP tools from the extension
             await this.refreshManifests();
@@ -141,7 +141,7 @@ export class ExtensionBridge {
 
           // ── Handle manual refresh manifests request from dashboard ──
           if (msg.type === 'refresh_manifests') {
-            console.log('[FlowPilot] Manual refresh manifests requested by dashboard');
+            console.log('[NodeNaut] Manual refresh manifests requested by dashboard');
             await this.refreshManifests();
             this.broadcastToDashboards({
               type: 'status_update',
@@ -205,13 +205,13 @@ export class ExtensionBridge {
           }
 
         } catch (e: any) {
-          console.error('[FlowPilot] WebSocket parse error:', e.message);
+          console.error('[NodeNaut] WebSocket parse error:', e.message);
         }
       });
 
       ws.on('close', () => {
         if (clientType === 'extension') {
-          console.error('[FlowPilot] Chrome Extension disconnected');
+          console.error('[NodeNaut] Chrome Extension disconnected');
           this.extensionWs = null;
           this.cachedManifests = [];
           this.broadcastToDashboards({
@@ -226,27 +226,27 @@ export class ExtensionBridge {
           }
           this.pendingRequests.clear();
         } else if (clientType === 'dashboard') {
-          console.error('[FlowPilot] Dashboard client disconnected');
+          console.error('[NodeNaut] Dashboard client disconnected');
           this.dashboardSockets.delete(ws);
         }
       });
 
       ws.on('error', (err) => {
-        console.error('[FlowPilot] WebSocket error:', err.message);
+        console.error('[NodeNaut] WebSocket error:', err.message);
       });
     });
 
     this.httpServ.on('error', (err: any) => {
       if (err.code === 'EADDRINUSE') {
-        console.error('[FlowPilot] Port ' + port + ' is already in use. Another instance may be running.');
-        console.error('[FlowPilot] Open http://localhost:' + port + ' to access the existing dashboard.');
+        console.error('[NodeNaut] Port ' + port + ' is already in use. Another instance may be running.');
+        console.error('[NodeNaut] Open http://localhost:' + port + ' to access the existing dashboard.');
       } else {
-        console.error('[FlowPilot] Server error:', err.message);
+        console.error('[NodeNaut] Server error:', err.message);
       }
     });
 
     this.httpServ.listen(port, () => {
-      console.error('[FlowPilot] Server & dashboard live at http://localhost:' + port);
+      console.error('[NodeNaut] Server & dashboard live at http://localhost:' + port);
     });
   }
 
@@ -330,7 +330,7 @@ export class ExtensionBridge {
       const mappedTools = mcpTools.map((t: any) => this.mapMcpToolToManifest(t));
       this.cachedManifests = [...mappedTools, ...nodeTypes];
     } catch (e) {
-      console.error('[FlowPilot] Error refreshing manifests:', e);
+      console.error('[NodeNaut] Error refreshing manifests:', e);
     }
   }
 
@@ -368,7 +368,7 @@ export class ExtensionBridge {
 
   async send(method: string, params: Record<string, any> = {}): Promise<any> {
     if (!this.isExtensionConnected) {
-      throw new Error('FlowPilot extension is not connected. Open the Chrome sidepanel to connect.');
+      throw new Error('NodeNaut extension is not connected. Open the Chrome sidepanel to connect.');
     }
 
     this.stats.totalRequests++;

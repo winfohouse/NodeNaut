@@ -1,6 +1,6 @@
-# FlowPilot MCP Server (Portable Edition)
+# NodeNaut MCP Server (Portable Edition)
 
-This is the Model Context Protocol (MCP) server for FlowPilot, compiled into standalone, dependency-free portable binaries for Windows, macOS, and Linux.
+This is the Model Context Protocol (MCP) server for NodeNaut, compiled into standalone, dependency-free portable binaries for Windows, macOS, and Linux.
 
 It enables AI clients (like Claude Desktop or Cursor) to securely manage, create, and execute automation workflows in your browser with **zero local dependencies (no Node.js required)** and **zero cloud hosting costs**.
 
@@ -18,9 +18,9 @@ It enables AI clients (like Claude Desktop or Cursor) to securely manage, create
 ## Compiled Binaries Location
 
 The standalone binaries are generated in:
-- **Windows**: `bin/flowpilot-mcp-win.exe`
-- **macOS**: `bin/flowpilot-mcp-macos`
-- **Linux**: `bin/flowpilot-mcp-linux`
+- **Windows**: `bin/nodenaut-mcp-win.exe`
+- **macOS**: `bin/nodenaut-mcp-macos`
+- **Linux**: `bin/nodenaut-mcp-linux`
 
 ---
 
@@ -29,7 +29,7 @@ The standalone binaries are generated in:
 To distribute this to your users, simply give them the binary matching their operating system:
 
 ### Step 1: Run the Binary once
-Double-click the binary (`flowpilot-mcp-win.exe` or equivalent for their OS). 
+Double-click the binary (`nodenaut-mcp-win.exe` or equivalent for their OS). 
 - It will automatically create and register the configuration for **Claude Desktop** at:
   - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
   - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
@@ -37,7 +37,7 @@ Double-click the binary (`flowpilot-mcp-win.exe` or equivalent for their OS).
 - Once run, the user can close the terminal window. Claude Desktop will automatically launch the binary as a background subprocess whenever it starts up.
 
 ### Step 2: Open Claude Desktop
-Restart Claude Desktop. The AI will immediately have access to all 27 FlowPilot browser automation tools!
+Restart Claude Desktop. The AI will immediately have access to all 27 NodeNaut browser automation tools!
 
 ---
 

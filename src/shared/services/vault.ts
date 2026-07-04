@@ -2,7 +2,7 @@ export type VaultState = 'UNINITIALIZED' | 'LOCKED' | 'UNLOCKED';
 
 export class VaultService {
   private static sessionKey: CryptoKey | null = null;
-  private static readonly STORAGE_PREFIX = 'flowpilot_v4_'; // New prefix for hardened storage
+  private static readonly STORAGE_PREFIX = 'nodenaut_v4_'; // New prefix for hardened storage
   private static readonly MASTER_HASH = 'master_hash';
   private static readonly SALT_KEY = 'vault_salt';
 

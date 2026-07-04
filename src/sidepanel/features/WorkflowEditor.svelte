@@ -15,7 +15,7 @@
   import Button from '../components/Button.svelte';
   import { onMount } from 'svelte';
   import { ConditionEngine } from '$shared/utils/ConditionEngine';
-  import { FlowPilotRegistry } from '$framework/Registry';
+  import { NodeNautRegistry } from '$framework/Registry';
   import Launcher from './Launcher.svelte';
   import NeuralCanvas from './NeuralCanvas.svelte';
   import { FileStore } from '../utils/FileStore';
@@ -83,11 +83,11 @@
 
   $: editingNode = activeGraph.nodes.find(n => n.id === editingScriptId);
 
-  const registry = FlowPilotRegistry.getInstance();
+  const registry = NodeNautRegistry.getInstance();
 
   onMount(() => {
     const init = async () => {
-      await FlowPilotRegistry.discoverPlugins();
+      await NodeNautRegistry.discoverPlugins();
       await loadWorkflow();
       await checkEngineStatus();
       allWorkflows = await db.workflows.toArray();
@@ -703,7 +703,7 @@
       }
     }
 
-    console.log(`[FlowPilot] Testing Node [${action.type}]`, action);
+    console.log(`[NodeNaut] Testing Node [${action.type}]`, action);
     const response = await Messenger.send(MessageType.TEST_NODE, {
       node: action,
       rowData: testData
@@ -874,7 +874,7 @@
       const bundles = (stored.node_bundles || []) as any[];
       const updatedBundles = bundles.map((b: any) => b.id === workflowId ? { ...currentBundleManifest } : b);
       await chrome.storage.local.set({ node_bundles: updatedBundles });
-      await FlowPilotRegistry.discoverPlugins();
+      await NodeNautRegistry.discoverPlugins();
     }
     currentBundleManifest = { ...currentBundleManifest };
   }

@@ -12,7 +12,7 @@ export class Recorder {
     document.addEventListener('click', (e) => this.handleClick(e), true);
     document.addEventListener('input', (e) => this.handleInput(e), true);
     
-    console.log('FlowPilot Recorder Initialized');
+    console.log('NodeNaut Recorder Initialized');
   }
 
   static start(workflowId: string) {

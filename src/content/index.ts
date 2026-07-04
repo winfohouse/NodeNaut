@@ -81,7 +81,7 @@ class ConditionInterpreter {
   }
 }
 
-console.log('FlowPilot Content Script Injected');
+console.log('NodeNaut Content Script Injected');
 
 function init() {
   try {
@@ -93,7 +93,7 @@ function init() {
     }
     SPAWatcher.init();
   } catch (e) {
-    console.error('FlowPilot Init Error:', e);
+    console.error('NodeNaut Init Error:', e);
   }
 }
 
@@ -190,7 +190,7 @@ async function handleContentMessage(request: ExtRequest): Promise<ExtResponse> {
 
         return { success: false, error: { code: 'EMPTY_EVAL', message: 'No logic provided' } };
       } catch (e: any) {
-        console.error('[FlowPilot] DOM_EVAL error:', e);
+        console.error('[NodeNaut] DOM_EVAL error:', e);
         return { success: false, error: { code: 'EVAL_ERROR', message: e.message } };
       }
     }

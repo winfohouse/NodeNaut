@@ -5,7 +5,7 @@ import { VaultService } from '$shared/services/vault';
 import { ResilientTabSender } from './ResilientTabSender';
 import { SandboxService } from './SandboxService';
 import { ConditionEngine } from '$shared/utils/ConditionEngine';
-import { FlowPilotRegistry } from '$framework/Registry';
+import { NodeNautRegistry } from '$framework/Registry';
 import type { NodePlugin, ExecutionContext, NodeResult, MessengerService, DiscoveryServiceCapability } from '$framework/NodePlugin';
 
 interface ExecutionSession {
@@ -25,7 +25,7 @@ export class WorkflowRunner {
   private sessions: Map<string, ExecutionSession> = new Map();
   private MAX_RETRIES = 3;
   private sandboxService = SandboxService.getInstance();
-  private registry = FlowPilotRegistry.getInstance();
+  private registry = NodeNautRegistry.getInstance();
 
   private constructor() {
     this.rehydrate();

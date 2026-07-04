@@ -34,18 +34,18 @@
   onMount(() => {
     // Keep background service worker alive by establishing a persistent connection port
     try {
-      keepAlivePort = chrome.runtime.connect({ name: 'flowpilot-keepalive' });
+      keepAlivePort = chrome.runtime.connect({ name: 'nodenaut-keepalive' });
       keepAlivePort.onDisconnect.addListener(() => {
         setTimeout(() => {
-          keepAlivePort = chrome.runtime.connect({ name: 'flowpilot-keepalive' });
+          keepAlivePort = chrome.runtime.connect({ name: 'nodenaut-keepalive' });
         }, 5000);
       });
     } catch (e) {}
 
     const init = async () => {
-      const stored = await chrome.storage.local.get('flowpilot_mood');
-      if (stored.flowpilot_mood) {
-        currentMood = stored.flowpilot_mood as Mood;
+      const stored = await chrome.storage.local.get('nodenaut_mood');
+      if (stored.nodenaut_mood) {
+        currentMood = stored.nodenaut_mood as Mood;
       }
       await loadCustomNodes();
       await loadNodeBundles();
@@ -90,10 +90,10 @@
 
   async function setMood(mood: Mood) {
     currentMood = mood;
-    await chrome.storage.local.set({ flowpilot_mood: mood });
+    await chrome.storage.local.set({ nodenaut_mood: mood });
   }
 
-  import { FlowPilotRegistry } from '$shared/framework/Registry';
+  import { NodeNautRegistry } from '$shared/framework/Registry';
   let customNodes: any[] = [];
 
   async function loadCustomNodes() {
@@ -109,7 +109,7 @@
       customNodes = nodes;
       
       // Re-run discoverPlugins to update registry
-      await FlowPilotRegistry.discoverPlugins();
+      await NodeNautRegistry.discoverPlugins();
     }
   }
 
@@ -198,9 +198,9 @@
 
       // 1. package.json
       const packageJson = {
-        name: "flowpilot-addon-boilerplate",
+        name: "nodenaut-addon-boilerplate",
         version: "1.0.0",
-        description: "FlowPilot Custom Node Addon Developer Framework",
+        description: "NodeNaut Custom Node Addon Developer Framework",
         main: "dist/runtime.js",
         scripts: {
           build: "node build.js",
@@ -233,7 +233,7 @@
       const manifestJson = {
         type: "CUSTOM_MATH_MULTIPLY",
         label: "Multiply Variable",
-        description: "Multiplies a FlowPilot variable by a constant factor",
+        description: "Multiplies a NodeNaut variable by a constant factor",
         category: "core",
         ports: {
           inputs: ["input"],
@@ -260,7 +260,7 @@
 
       // 4. src/runtime.ts
       const runtimeTs = `/**
- * FlowPilot Sandbox Context Typings
+ * NodeNaut Sandbox Context Typings
  */
 interface ExecutionContext {
   node: {
@@ -271,14 +271,14 @@ interface ExecutionContext {
   };
 }
 
-// FlowPilot Logic API
+// NodeNaut Logic API
 declare const FLOW: {
   click(selector: string): Promise<boolean>;
   fill(selector: string, value: string): Promise<boolean>;
   wait(ms: number): Promise<void>;
 };
 
-// FlowPilot global variable tables
+// NodeNaut global variable tables
 declare const GLOBAL: {
   variables: {
     update(data: Record<string, any>): Promise<void>;
@@ -413,9 +413,9 @@ build().catch(err => {
       zip.file('build.js', buildJs);
 
       // 7. README.md
-      const readmeMd = `# FlowPilot Custom Node Developer Framework
+      const readmeMd = `# NodeNaut Custom Node Developer Framework
 
-Welcome to the FlowPilot custom node developer environment!
+Welcome to the NodeNaut custom node developer environment!
 
 ## Getting Started
 
@@ -439,7 +439,7 @@ Welcome to the FlowPilot custom node developer environment!
      \`\`\`bash
      npm run build
      \`\`\`
-   - Go to FlowPilot sidepanel > **Settings** > **Custom Node Addons**.
+   - Go to NodeNaut sidepanel > **Settings** > **Custom Node Addons**.
    - Drag/upload \`addon.zip\` to register it instantly!
 `;
       zip.file('README.md', readmeMd);
@@ -448,7 +448,7 @@ Welcome to the FlowPilot custom node developer environment!
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'flowpilot-addon-boilerplate.zip';
+      a.download = 'nodenaut-addon-boilerplate.zip';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -485,7 +485,7 @@ Welcome to the FlowPilot custom node developer environment!
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       await chrome.storage.local.set({ node_bundles: bundles });
       nodeBundles = bundles;
-      await FlowPilotRegistry.discoverPlugins();
+      await NodeNautRegistry.discoverPlugins();
     }
   }
 
@@ -665,7 +665,7 @@ Welcome to the FlowPilot custom node developer environment!
         <Activity size={18} color="var(--text-primary)" />
       </div>
       <div class="logo-text">
-        <h1>FlowPilot <span class="v-tag">ELITE</span></h1>
+        <h1>NodeNaut <span class="v-tag">ELITE</span></h1>
         <div class="status-badge">
           <div class="pulse-dot"></div>
           <span>Neural Link Established</span>
@@ -859,7 +859,7 @@ Welcome to the FlowPilot custom node developer environment!
             <Code size={16} />
             <h3>Custom Node Addons</h3>
           </div>
-          <p class="zone-desc">Develop and upload custom browser automation node types to extend FlowPilot globally.</p>
+          <p class="zone-desc">Develop and upload custom browser automation node types to extend NodeNaut globally.</p>
           
           <div class="addon-actions">
             <Button variant="picker" size="sm" fullWidth on:click={downloadBoilerplate}>
@@ -927,18 +927,18 @@ Welcome to the FlowPilot custom node developer environment!
             </div>
             <span style="font-size: 0.6rem; font-weight: 900; background: var(--accent-glow); color: var(--accent); padding: 0.15rem 0.4rem; border-radius: 4px; border: 1px solid var(--accent); margin-left: 0.5rem;">v{mcpVersion}</span>
           </div>
-          <p class="zone-desc">Connect FlowPilot to external AI assistants (like Claude Desktop or Cursor) to build and run workflows using natural language. Download the portable local companion binary for your OS to enable automatic local pairing (Zero Cloud Costs).</p>
+          <p class="zone-desc">Connect NodeNaut to external AI assistants (like Claude Desktop or Cursor) to build and run workflows using natural language. Download the portable local companion binary for your OS to enable automatic local pairing (Zero Cloud Costs).</p>
           
           <div class="mcp-downloads">
-            <a href="/mcp/flowpilot-mcp-win-v{mcpVersion}.exe" download="flowpilot-mcp-win-v{mcpVersion}.exe" class="mcp-btn">
+            <a href="/mcp/nodenaut-mcp-win-v{mcpVersion}.exe" download="nodenaut-mcp-win-v{mcpVersion}.exe" class="mcp-btn">
               <Download size={12} />
               <span>Windows (.exe)</span>
             </a>
-            <a href="/mcp/flowpilot-mcp-macos-v{mcpVersion}" download="flowpilot-mcp-macos-v{mcpVersion}" class="mcp-btn">
+            <a href="/mcp/nodenaut-mcp-macos-v{mcpVersion}" download="nodenaut-mcp-macos-v{mcpVersion}" class="mcp-btn">
               <Download size={12} />
               <span>macOS Binary</span>
             </a>
-            <a href="/mcp/flowpilot-mcp-linux-v{mcpVersion}" download="flowpilot-mcp-linux-v{mcpVersion}" class="mcp-btn">
+            <a href="/mcp/nodenaut-mcp-linux-v{mcpVersion}" download="nodenaut-mcp-linux-v{mcpVersion}" class="mcp-btn">
               <Download size={12} />
               <span>Linux Binary</span>
             </a>
@@ -947,7 +947,7 @@ Welcome to the FlowPilot custom node developer environment!
             <strong>How to pair:</strong>
             <ol>
               <li>Download the executable for your operating system.</li>
-              <li>Double-click the binary on your computer to run it once. It will automatically detect and register FlowPilot inside your Claude Desktop configuration.</li>
+              <li>Double-click the binary on your computer to run it once. It will automatically detect and register NodeNaut inside your Claude Desktop configuration.</li>
               <li>Restart Claude Desktop.</li>
             </ol>
           </div>

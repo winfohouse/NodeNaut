@@ -14,4 +14,4 @@ chrome.runtime.onMessage.addListener((request) => {
   }
 });
 
-console.log('[FlowPilot] Offscreen Bridge Initialized');
+console.log('[NodeNaut] Offscreen Bridge Initialized');

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Plus, Search, GripVertical, MousePointer2, ShieldCheck, Layers } from '@lucide/svelte';
-  import { FlowPilotRegistry } from '$framework/Registry';
+  import { NodeNautRegistry } from '$framework/Registry';
   import * as Icons from '@lucide/svelte';
   import Button from '$sidepanel/components/Button.svelte';
   import { onMount } from 'svelte';
@@ -14,7 +14,7 @@
   let isOpen = false;
   let isDragging = false;
   let searchTerm = '';
-  const registry = FlowPilotRegistry.getInstance();
+  const registry = NodeNautRegistry.getInstance();
   
   $: manifests = registry.getAllManifests().filter(m => {
     if (m.type === 'START') return false;

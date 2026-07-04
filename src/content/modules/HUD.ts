@@ -133,7 +133,7 @@ export class FloatingHUD {
         <div class="fp-pulse-dot ${status === 'RUNNING' || status === 'PAUSED' ? 'pulse' : ''}" style="background: ${statusColor}; box-shadow: 0 0 12px ${statusColor}"></div>
         <div class="fp-hud-content">
           <div class="fp-hud-header">
-            <span class="fp-hud-label">${status === 'ERROR' ? 'System Error' : 'FlowPilot Engine'}</span>
+            <span class="fp-hud-label">${status === 'ERROR' ? 'System Error' : 'NodeNaut Engine'}</span>
             <div class="fp-hud-badges">
               ${totalRows && totalRows > 1 ? `<span class="fp-hud-badge row">Row ${currentRow}/${totalRows}</span>` : ''}
               ${totalSteps ? `<span class="fp-hud-badge step">Step ${currentStep}/${totalSteps}</span>` : ''}

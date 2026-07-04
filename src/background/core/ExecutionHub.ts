@@ -1,5 +1,5 @@
 import { db } from '$shared/services/db';
-import { FlowPilotRegistry } from '$framework/Registry';
+import { NodeNautRegistry } from '$framework/Registry';
 import type { 
   ExecutionContext, 
   NodeResult, 
@@ -17,10 +17,10 @@ import { VaultService } from '$shared/services/vault';
 export class ExecutionHub {
   private static instance: ExecutionHub;
   private activeSessions = new Map<string, Record<string, unknown>>();
-  private registry = FlowPilotRegistry.getInstance();
+  private registry = NodeNautRegistry.getInstance();
 
   private constructor() {
-    FlowPilotRegistry.discoverPlugins();
+    NodeNautRegistry.discoverPlugins();
   }
 
   static getInstance(): ExecutionHub {

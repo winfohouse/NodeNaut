@@ -31,9 +31,9 @@ function copyBinaries() {
 
     // 3. Define binary files to copy and rename
     const binaries = [
-      { src: 'flowpilot-mcp-win.exe', dest: `flowpilot-mcp-win-v${version}.exe` },
-      { src: 'flowpilot-mcp-macos', dest: `flowpilot-mcp-macos-v${version}` },
-      { src: 'flowpilot-mcp-linux', dest: `flowpilot-mcp-linux-v${version}` }
+      { src: 'nodenaut-mcp-win.exe', dest: `nodenaut-mcp-win-v${version}.exe` },
+      { src: 'nodenaut-mcp-macos', dest: `nodenaut-mcp-macos-v${version}` },
+      { src: 'nodenaut-mcp-linux', dest: `nodenaut-mcp-linux-v${version}` }
     ];
 
     // 4. Copy each binary if it exists

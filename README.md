@@ -7,38 +7,38 @@
   <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Firefox-yellow?style=flat-square" alt="Chrome | Firefox" />
 </p>
 
-# FlowPilot
+# NodeNaut
 
 **Elite Programmable Browser Workflow & Smart Form Automation Platform**
 
-📥 **[Download for Chrome](https://github.com/winfohouse/FlowPilot/releases)** | 🦊 **[Download for Firefox](https://github.com/winfohouse/FlowPilot/releases)**
+📥 **[Download for Chrome](https://github.com/winfohouse/NodeNaut/releases)** | 🦊 **[Download for Firefox](https://github.com/winfohouse/NodeNaut/releases)**
 
 
-FlowPilot is a visual, node-graph-based browser extension that lets you build, test, and execute complex browser automation workflows — from simple form filling to multi-tab scraping pipelines — entirely within your browser. It features a full visual canvas editor, a sandboxed JavaScript IDE (FlowScript), encrypted vault storage, reusable subflow bundles, and deep AI integration via the **Model Context Protocol (MCP)**.
+NodeNaut is a visual, node-graph-based browser extension that lets you build, test, and execute complex browser automation workflows — from simple form filling to multi-tab scraping pipelines — entirely within your browser. It features a full visual canvas editor, a sandboxed JavaScript IDE (FlowScript), encrypted vault storage, reusable subflow bundles, and deep AI integration via the **Model Context Protocol (MCP)**.
 
 ---
 
-## Why Choose FlowPilot?
+## Why Choose NodeNaut?
 
-The browser automation landscape is cluttered with clunky, rigid, and privacy-invasive tools. FlowPilot redefines how you automate the web by bringing enterprise-grade power directly into your browser extension—no cloud subscriptions, no external desktop software required. 
+The browser automation landscape is cluttered with clunky, rigid, and privacy-invasive tools. NodeNaut redefines how you automate the web by bringing enterprise-grade power directly into your browser extension—no cloud subscriptions, no external desktop software required. 
 
-Here is why professionals, developers, and AI agents choose FlowPilot:
+Here is why professionals, developers, and AI agents choose NodeNaut:
 
 ### What We Offer Over The Competition
-- **True Local Execution:** Unlike cloud-based scrapers (like Zapier or Make) or external automation software, FlowPilot runs 100% locally in your browser. Your data never leaves your machine unless you explicitly send it.
-- **AI Agent Native (MCP):** FlowPilot isn't just for humans. We are the first browser automation platform to expose our entire engine to AI agents (like Claude Desktop) via the Model Context Protocol. AI can build, run, and debug workflows directly in your browser.
+- **True Local Execution:** Unlike cloud-based scrapers (like Zapier or Make) or external automation software, NodeNaut runs 100% locally in your browser. Your data never leaves your machine unless you explicitly send it.
+- **AI Agent Native (MCP):** NodeNaut isn't just for humans. We are the first browser automation platform to expose our entire engine to AI agents (like Claude Desktop) via the Model Context Protocol. AI can build, run, and debug workflows directly in your browser.
 - **Self-Healing Selectors:** Forget fragile workflows that break on minor website updates. Our AI-readable DOM analysis and multi-candidate selector healing ensure your automations adapt and survive UI changes.
 - **No-Code Meets Full-Code:** A beautiful visual canvas for quick automations, backed by a sandboxed Monaco IDE (FlowScript) when you need to write complex custom logic. You are never boxed in.
 - **Enterprise Security (Vault):** We offer an integrated AES-256-GCM encrypted vault. Store your API keys, passwords, and sensitive datasets safely.
 
 ### The Verdict: How Good Is It?
-FlowPilot is designed to be the absolute apex of programmable browser extensions. Built on a robust Manifest V3, Vite, and Svelte 5 architecture, it effortlessly handles everything from simple daily macros to parallel, multi-tab data extraction pipelines processing thousands of rows. It is blazingly fast, deeply extensible via custom node addons, and remarkably resilient.
+NodeNaut is designed to be the absolute apex of programmable browser extensions. Built on a robust Manifest V3, Vite, and Svelte 5 architecture, it effortlessly handles everything from simple daily macros to parallel, multi-tab data extraction pipelines processing thousands of rows. It is blazingly fast, deeply extensible via custom node addons, and remarkably resilient.
 
 ---
 
 ## Table of Contents
 
-- [Why Choose FlowPilot?](#why-choose-flowpilot)
+- [Why Choose NodeNaut?](#why-choose-nodenaut)
 - [Features](#features)
 - [System Architecture](#system-architecture)
 - [Installation](#installation)
@@ -147,7 +147,7 @@ FlowPilot is designed to be the absolute apex of programmable browser extensions
 │  ├── MessageRouter     ← central message bus (380 lines)             │
 │  ├── WorkflowRunner    ← execution engine, sessions, graphs (750 L)  │
 │  ├── SandboxService    ← offscreen sandbox lifecycle (155 L)         │
-│  ├── FlowPilotRegistry ← node plugin system (390 L)                 │
+│  ├── NodeNautRegistry ← node plugin system (390 L)                 │
 │  ├── TabCoordinator    ← multi-tab management                       │
 │  └── McpBridge         ← WebSocket to MCP server (1207 L)           │
 └────────┬──────────────────────────────────┬──────────────────────────┘
@@ -203,7 +203,7 @@ FlowPilot is designed to be the absolute apex of programmable browser extensions
 4. Open `chrome://extensions/` in Chrome
 5. Enable **Developer mode** (top-right toggle)
 6. Click **Load unpacked** and select the `dist/` folder
-7. FlowPilot appears in your extension toolbar — click to open the side panel
+7. NodeNaut appears in your extension toolbar — click to open the side panel
 
 ### Firefox
 
@@ -212,7 +212,7 @@ FlowPilot is designed to be the absolute apex of programmable browser extensions
 3. Open `about:debugging#/runtime/this-firefox` in Firefox
 4. Click **Load Temporary Add-on**
 5. Select any file inside the `dist-firefox/` folder (e.g., `manifest.json`)
-6. FlowPilot appears in the sidebar (`View → Sidebar → FlowPilot`)
+6. NodeNaut appears in the sidebar (`View → Sidebar → NodeNaut`)
 
 ### Building from Source
 
@@ -242,7 +242,7 @@ The build pipeline is a **two-pass Vite build**:
 ## Project Structure
 
 ```
-FlowPilot/
+NodeNaut/
 ├── public/
 │   └── manifest.json              # Chrome Extension Manifest V3
 ├── src/
@@ -287,7 +287,7 @@ FlowPilot/
 │   ├── src/
 │   │   ├── index.ts               # MCP stdio server + tool definitions (667 lines)
 │   │   └── bridge.ts             # HTTP + WebSocket bridge server (430 lines)
-│   └── package.json               # Separate package (flowpilot-mcp v1.0.0)
+│   └── package.json               # Separate package (nodenaut-mcp v1.0.0)
 ├── scripts/
 │   ├── copy-binaries.js           # Copies MCP binaries to public/mcp/
 │   └── build-firefox.js           # Firefox manifest translation build
@@ -295,7 +295,7 @@ FlowPilot/
 ├── offscreen.html                 # Offscreen document (hosts sandbox iframe)
 ├── sandbox.html                   # Sandboxed page for FlowScript execution
 ├── vite.config.ts                 # Dual-mode Vite build configuration
-└── package.json                   # Root package (flowpilot v0.1.0)
+└── package.json                   # Root package (nodenaut v0.1.0)
 ```
 
 ---
@@ -304,7 +304,7 @@ FlowPilot/
 
 ### Creating Your First Workflow
 
-1. Open the FlowPilot side panel by clicking the extension icon
+1. Open the NodeNaut side panel by clicking the extension icon
 2. Click **+ New Workflow** on the Workflows tab
 3. You are taken to the **Canvas Editor** with a single **START** node
 4. Open the **Launcher** (rocket icon in the toolbar) to see available nodes
@@ -315,7 +315,7 @@ FlowPilot/
 ### Running a Workflow
 
 1. Navigate to the target website in a browser tab
-2. Open FlowPilot side panel
+2. Open NodeNaut side panel
 3. Select a workflow and click the **▶ Play** button
 4. The workflow begins executing from the START node
 5. Use **⏸ Pause**, **⏹ Stop**, or **⏯ Step** for debugging
@@ -360,7 +360,7 @@ Edges connect output ports to input ports. Each edge has a **threading mode** th
 
 Click the **crosshair** button to activate the DOM element picker:
 1. Hover over elements on the page — they highlight
-2. Click to select — FlowPilot captures the CSS selector and candidate paths
+2. Click to select — NodeNaut captures the CSS selector and candidate paths
 3. A new CLICK or TYPE node is auto-created with the selected element
 
 ### Page Scanner
@@ -589,7 +589,7 @@ const text = await FLOW.getText('#result');
 // Scan the page for interactive elements
 const elements = await FLOW.scan();
 
-// Log a message to the FlowPilot console
+// Log a message to the NodeNaut console
 FLOW.log('Processing complete!');
 
 // Show an alert on the page
@@ -810,7 +810,7 @@ await GLOBAL.leads.forEach((row, i) => { ... })
 
 ## Encrypted Vault
 
-FlowPilot includes a client-side encryption vault for sensitive data.
+NodeNaut includes a client-side encryption vault for sensitive data.
 
 ### How It Works
 - **Algorithm**: AES-256-GCM with random 12-byte IV
@@ -878,7 +878,7 @@ Node Bundles are reusable workflow components. Think of them as **functions** �
 
 ## Custom Node Addons
 
-Power users can extend FlowPilot with custom node addons.
+Power users can extend NodeNaut with custom node addons.
 
 ### Addon Structure
 
@@ -928,7 +928,7 @@ You can also download a **developer boilerplate** ZIP from the settings panel.
 
 ## Theming (Moods)
 
-FlowPilot ships with 4 visual themes ("moods"):
+NodeNaut ships with 4 visual themes ("moods"):
 
 | Mood | Style |
 |------|-------|
@@ -937,7 +937,7 @@ FlowPilot ships with 4 visual themes ("moods"):
 | **Synthwave** | Neon pink/cyan on deep purple — retro-futuristic |
 | **Nebula** | Deep purple gradients with cosmic accents |
 
-Switch themes in **Settings → Appearance**. The selection persists in `chrome.storage.local` under the key `flowpilot_mood`.
+Switch themes in **Settings → Appearance**. The selection persists in `chrome.storage.local` under the key `nodenaut_mood`.
 
 Each theme is defined as a set of CSS custom properties applied globally.
 
@@ -945,7 +945,7 @@ Each theme is defined as a set of CSS custom properties applied globally.
 
 ## MCP Integration (AI Agent Support)
 
-FlowPilot exposes **38 tools** via the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP), allowing AI agents like Claude Desktop to fully control the extension programmatically.
+NodeNaut exposes **38 tools** via the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP), allowing AI agents like Claude Desktop to fully control the extension programmatically.
 
 ### How It Works
 
@@ -964,7 +964,7 @@ The companion server is a **thin proxy** — all 38 tool implementations live in
 ### Setting Up the Companion Server
 
 **Option 1: Download Binary (Recommended)**
-1. Go to **Settings → MCP Integration** in the FlowPilot side panel
+1. Go to **Settings → MCP Integration** in the NodeNaut side panel
 2. Download the binary for your OS (Windows/macOS/Linux)
 3. Run it — the server auto-configures `claude_desktop_config.json`
 4. Restart Claude Desktop
@@ -1095,7 +1095,7 @@ The content script (`src/content/index.ts`) is injected into **every web page** 
 
 ### Self-Healing Selectors
 
-FlowPilot doesn't rely on a single CSS selector. When an element is picked or scanned, it stores:
+NodeNaut doesn't rely on a single CSS selector. When an element is picked or scanned, it stores:
 1. **Primary selector** — The most specific CSS path
 2. **Candidate array** — Alternative selectors ranked by specificity
 3. **Element spec** — Attributes, text content, position metadata
@@ -1138,7 +1138,7 @@ A **CSP-safe**, recursive JSON-based condition evaluator used by `IF_BRANCH` and
 
 ## Database Schema
 
-FlowPilot uses **Dexie.js** (IndexedDB wrapper) with 7 tables:
+NodeNaut uses **Dexie.js** (IndexedDB wrapper) with 7 tables:
 
 | Table | Primary Key | Indexes | Purpose |
 |-------|-------------|---------|---------|
@@ -1201,7 +1201,7 @@ interface GlobalTable {
 
 ## Cross-Browser Support
 
-FlowPilot supports both **Chrome** and **Firefox** from a single codebase.
+NodeNaut supports both **Chrome** and **Firefox** from a single codebase.
 
 ### Differences Handled
 
@@ -1296,11 +1296,11 @@ The build uses **dual-mode** Vite:
 
 | Key | Type | Purpose |
 |-----|------|---------|
-| `flowpilot_mood` | `string` | Active theme name |
+| `nodenaut_mood` | `string` | Active theme name |
 | `custom_nodes` | `array` | Installed custom node addons |
 | `node_bundles` | `array` | Registered node bundle manifests |
-| `flowpilot_v4_salt` | `string` | Vault PBKDF2 salt (base64) |
-| `flowpilot_v4_hash` | `string` | Vault verification hash (base64) |
+| `nodenaut_v4_salt` | `string` | Vault PBKDF2 salt (base64) |
+| `nodenaut_v4_hash` | `string` | Vault verification hash (base64) |
 
 ---
 
@@ -1313,7 +1313,7 @@ The build uses **dual-mode** Vite:
 
 ### MCP server not connecting
 - Verify the companion server is running on port 7865
-- Check that the extension's service worker is active (open `chrome://extensions/` → FlowPilot → "Inspect views: service worker")
+- Check that the extension's service worker is active (open `chrome://extensions/` → NodeNaut → "Inspect views: service worker")
 - The extension auto-reconnects via a keepalive alarm every 27 seconds
 
 ### Vault locked during execution
@@ -1327,7 +1327,7 @@ The build uses **dual-mode** Vite:
 - Individual `_call()` RPCs (FLOW.click, etc.) timeout after 15 seconds
 
 ### Selectors breaking on updated pages
-- FlowPilot uses self-healing selectors with candidate arrays
+- NodeNaut uses self-healing selectors with candidate arrays
 - Re-scan the page or re-pick elements to refresh selector candidates
 - The `SelectorHealer` tries multiple fallback strategies automatically
 

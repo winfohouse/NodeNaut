@@ -62,7 +62,7 @@ export class DOMActionHelper {
             resolvedValue = new File([fileData.blob], fileData.name, { type: fileData.type }) as any;
           }
         } catch (err) {
-          console.error('[FlowPilot] Failed to load large file from FileStore in runner', err);
+          console.error('[NodeNaut] Failed to load large file from FileStore in runner', err);
         }
       }
     }
@@ -80,7 +80,7 @@ export class DOMActionHelper {
             resolvedValue = new File([blob], name, { type: blob.type }) as any;
           }
         } catch (err) {
-          console.error('[FlowPilot] Failed to fetch remote file for upload in runner', err);
+          console.error('[NodeNaut] Failed to fetch remote file for upload in runner', err);
         }
       }
     }

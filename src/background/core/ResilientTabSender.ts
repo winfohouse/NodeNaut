@@ -21,14 +21,14 @@ export class ResilientTabSender {
         const url = tab.url || '';
         const restricted = ['chrome:', 'about:', 'edge:', 'view-source:', 'chrome-extension:'];
         if (restricted.some(s => url.startsWith(s))) {
-          console.warn(`[FlowPilot] Skipping resilient re-injection on restricted URL: ${url}`);
+          console.warn(`[NodeNaut] Skipping resilient re-injection on restricted URL: ${url}`);
           return response;
         }
       } catch (e) {
         // Tab might be gone or inaccessible
       }
 
-      console.warn(`[FlowPilot] Tab ${tabId} disconnected during ${type}. Attempting resilient re-injection...`);
+      console.warn(`[NodeNaut] Tab ${tabId} disconnected during ${type}. Attempting resilient re-injection...`);
       try {
         // Attempt to re-inject the main content script
         await chrome.scripting.executeScript({
@@ -47,7 +47,7 @@ export class ResilientTabSender {
             isReady = true;
             break;
           }
-          console.warn(`[FlowPilot] Handshake attempt ${attempt + 1} failed for tab ${tabId}`);
+          console.warn(`[NodeNaut] Handshake attempt ${attempt + 1} failed for tab ${tabId}`);
         }
 
         if (!isReady) {
@@ -58,12 +58,12 @@ export class ResilientTabSender {
         response = await Messenger.broadcastToTab(tabId, type, payload);
         
         if (response.success) {
-          console.info(`[FlowPilot] Resilient connection RE-ESTABLISHED on tab ${tabId} for ${type}`);
+          console.info(`[NodeNaut] Resilient connection RE-ESTABLISHED on tab ${tabId} for ${type}`);
         } else {
-          console.error(`[FlowPilot] Retry failed after handshake on tab ${tabId}:`, response.error);
+          console.error(`[NodeNaut] Retry failed after handshake on tab ${tabId}:`, response.error);
         }
       } catch (injectError: any) {
-        console.error(`[FlowPilot] Critical: Resilient injection failed on tab ${tabId}:`, injectError);
+        console.error(`[NodeNaut] Critical: Resilient injection failed on tab ${tabId}:`, injectError);
         return {
           success: false,
           error: {

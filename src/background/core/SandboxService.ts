@@ -10,13 +10,13 @@ export class SandboxService {
   private constructor() {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.type === 'FP_READY') {
-        console.log('[FlowPilot] Sandbox Handshake Received: READY');
+        console.log('[NodeNaut] Sandbox Handshake Received: READY');
         this.sandboxReady = true;
         if (sendResponse) sendResponse({ success: true });
       }
 
       if (message.type === 'FP_LOG') {
-        console.log(`[FlowPilot][Sandbox:${message.id}]`, message.message);
+        console.log(`[NodeNaut][Sandbox:${message.id}]`, message.message);
       }
 
       if (message.type === 'FP_SCRIPT_DONE') {
@@ -39,7 +39,7 @@ export class SandboxService {
   }
 
   async execute(payload: any): Promise<ExtResponse> {
-    console.log('[FlowPilot] Starting Sandbox Execution Request');
+    console.log('[NodeNaut] Starting Sandbox Execution Request');
     const { code, data, tableId, rowIndex } = payload;
     const scriptId = Math.random().toString(36).substring(2);
     
@@ -48,7 +48,7 @@ export class SandboxService {
       
       // Request status if not ready
       if (!this.sandboxReady) {
-        console.log('[FlowPilot] Sandbox not ready, requesting status...');
+        console.log('[NodeNaut] Sandbox not ready, requesting status...');
         chrome.runtime.sendMessage({ type: 'TO_SANDBOX', payload: { type: 'FP_STATUS_REQ' } });
         
         let waitCount = 0;
@@ -88,7 +88,7 @@ export class SandboxService {
         });
       });
     } catch (e: any) {
-      console.error('[FlowPilot] Sandbox execution failed:', e);
+      console.error('[NodeNaut] Sandbox execution failed:', e);
       return { success: false, error: { code: 'SANDBOX_FAILED', message: e.message } };
     }
   }
@@ -97,7 +97,7 @@ export class SandboxService {
     // If chrome.offscreen is not available (like in Firefox), append a hidden iframe to the background page's DOM
     if (typeof chrome.offscreen === 'undefined') {
       if (document.getElementById('fp-sandbox-iframe')) return;
-      console.log('[FlowPilot] Appending hidden sandbox iframe for Firefox...');
+      console.log('[NodeNaut] Appending hidden sandbox iframe for Firefox...');
       const iframe = document.createElement('iframe');
       iframe.id = 'fp-sandbox-iframe';
       iframe.src = 'offscreen.html';
@@ -115,7 +115,7 @@ export class SandboxService {
       }
     } catch (e) {}
 
-    console.log('[FlowPilot] Initializing Offscreen Service...');
+    console.log('[NodeNaut] Initializing Offscreen Service...');
     this.sandboxReady = false; 
 
     await chrome.offscreen.createDocument({

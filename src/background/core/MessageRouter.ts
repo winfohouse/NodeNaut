@@ -48,11 +48,11 @@ export class MessageRouter {
     }
 
     if (!tabId) {
-      console.error('[FlowPilot] Sandbox bridge failed: No primary tab registered');
+      console.error('[NodeNaut] Sandbox bridge failed: No primary tab registered');
       return;
     }
 
-    console.log(`[FlowPilot] Bridging Sandbox Req: ${type}`);
+    console.log(`[NodeNaut] Bridging Sandbox Req: ${type}`);
 
     // Standard Mapping for common commands to avoid massive switch
     const commandMap: Record<string, { type: MessageType, payloadMapper: (m: any) => any }> = {

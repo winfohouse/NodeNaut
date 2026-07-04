@@ -32,7 +32,7 @@ function sendRequest(method, params = {}) {
 }
 
 ws.on('open', async () => {
-  console.log('Connected to FlowPilot companion bridge!');
+  console.log('Connected to NodeNaut companion bridge!');
   
   // 1. Register as dashboard client to get access
   ws.send(JSON.stringify({ type: 'register_dashboard' }));
@@ -54,10 +54,10 @@ ws.on('open', async () => {
     // Step C: Type search query into Google input 'q'
     console.log('\n--- Step 3: TYPE Search Query ---');
     try {
-      await sendRequest('TYPE', { selector: 'textarea[name="q"]', text: 'FlowPilot Chrome Extension', clearFirst: true });
+      await sendRequest('TYPE', { selector: 'textarea[name="q"]', text: 'NodeNaut Chrome Extension', clearFirst: true });
     } catch (e) {
       console.log('Retrying with input[name="q"]...');
-      await sendRequest('TYPE', { selector: 'input[name="q"]', text: 'FlowPilot Chrome Extension', clearFirst: true });
+      await sendRequest('TYPE', { selector: 'input[name="q"]', text: 'NodeNaut Chrome Extension', clearFirst: true });
     }
 
     // Step D: Submit search

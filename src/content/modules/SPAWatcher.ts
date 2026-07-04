@@ -12,7 +12,7 @@ export class SPAWatcher {
     (document.head || document.documentElement).appendChild(script);
     script.onload = () => script.remove();
 
-    window.addEventListener('flowpilot-navigation', () => {
+    window.addEventListener('nodenaut-navigation', () => {
       this.handleNavigation();
     });
 

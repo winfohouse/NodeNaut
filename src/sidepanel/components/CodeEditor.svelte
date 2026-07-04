@@ -92,7 +92,7 @@
     `;
 
     const fullSource = `${flowscriptDts}\n${dynamicDefinitions}`;
-    libDisposable = monaco.languages.typescript.javascriptDefaults.addExtraLib(fullSource, 'flowpilot-env.d.ts');
+    libDisposable = monaco.languages.typescript.javascriptDefaults.addExtraLib(fullSource, 'nodenaut-env.d.ts');
   }
 
   $: if (headers && monaco) updateDynamicTypes();

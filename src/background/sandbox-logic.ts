@@ -1,5 +1,5 @@
 (async () => {
-  console.log('[FlowPilot] Sandbox Engine Loaded');
+  console.log('[NodeNaut] Sandbox Engine Loaded');
 
   // Signal ready to background
   window.parent.postMessage({ type: 'FP_READY' }, '*');
@@ -19,12 +19,12 @@
     if (!id) return; // ID is required for routing
 
     if (!code || code.trim() === '') {
-      console.warn('[FlowPilot] Sandbox received empty script, returning success.');
+      console.warn('[NodeNaut] Sandbox received empty script, returning success.');
       window.parent.postMessage({ type: 'FP_SCRIPT_DONE', id, success: true, data: null }, '*');
       return;
     }
 
-    console.log('[FlowPilot] Sandbox executing script:', id);
+    console.log('[NodeNaut] Sandbox executing script:', id);
 
     const _call = async (type: string, payload: any) => {
       return new Promise((res, rej) => {

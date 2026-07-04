@@ -367,9 +367,9 @@ export class ElementPicker {
   }
 }
 
-if (!document.getElementById('flowpilot-styles')) {
+if (!document.getElementById('nodenaut-styles')) {
   const style = document.createElement('style');
-  style.id = 'flowpilot-styles';
+  style.id = 'nodenaut-styles';
   style.textContent = `
     @keyframes fp-fade-in {
       from { opacity: 0; transform: translateY(5px); }

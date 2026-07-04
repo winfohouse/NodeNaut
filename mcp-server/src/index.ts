@@ -8,13 +8,13 @@ import * as path from 'path';
 import * as os from 'os';
 
 // Path to save cached tool schemas
-const CACHE_PATH = path.join(os.tmpdir(), 'flowpilot-mcp-tools-cache.json');
+const CACHE_PATH = path.join(os.tmpdir(), 'nodenaut-mcp-tools-cache.json');
 
 // Static fallback of the 38 core tools so they are ALWAYS available in Claude Desktop even if the extension is offline/connecting
 const FALLBACK_TOOLS = [
   {
     name: 'list_flows',
-    description: 'List all workflows stored in FlowPilot database. Returns workflow metadata such as ID, name, nodeCount, edgeCount, encrypted status, settings, created time, and updated time.',
+    description: 'List all workflows stored in NodeNaut database. Returns workflow metadata such as ID, name, nodeCount, edgeCount, encrypted status, settings, created time, and updated time.',
     inputSchema: { type: 'object', properties: {} }
   },
   {
@@ -114,7 +114,7 @@ const FALLBACK_TOOLS = [
   },
   {
     name: 'list_node_types',
-    description: 'Dynamically list all registered node types available in FlowPilot. This includes core, browser, logic, developer, human, and custom addon/bundle nodes. AI should use this to understand what node types are available and what their initialState schemas look like.',
+    description: 'Dynamically list all registered node types available in NodeNaut. This includes core, browser, logic, developer, human, and custom addon/bundle nodes. AI should use this to understand what node types are available and what their initialState schemas look like.',
     inputSchema: { type: 'object', properties: {} }
   },
   {
@@ -195,7 +195,7 @@ const FALLBACK_TOOLS = [
   },
   {
     name: 'list_tables',
-    description: 'List all user data tables (datasets) stored in FlowPilot.',
+    description: 'List all user data tables (datasets) stored in NodeNaut.',
     inputSchema: { type: 'object', properties: {} }
   },
   {
@@ -249,7 +249,7 @@ const FALLBACK_TOOLS = [
   },
   {
     name: 'list_globals',
-    description: 'List all global variables tables and datasets configured in FlowPilot.',
+    description: 'List all global variables tables and datasets configured in NodeNaut.',
     inputSchema: { type: 'object', properties: {} }
   },
   {
@@ -348,7 +348,7 @@ const FALLBACK_TOOLS = [
   },
   {
     name: 'register_bundle',
-    description: 'Register a modular Node Bundle manifest in Chrome local storage and FlowPilot registry.',
+    description: 'Register a modular Node Bundle manifest in Chrome local storage and NodeNaut registry.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -526,8 +526,8 @@ function setupClaudeConfig() {
   const isPackaged = typeof (process as any).pkg !== 'undefined';
   const executableToRun = isPackaged ? exePath : path.resolve(scriptPath || './dist/index.js');
   
-  console.error(`\n[FlowPilot MCP] Detected Executable Path: ${executableToRun}`);
-  console.error(`[FlowPilot MCP] Claude Desktop Config: ${configPath}`);
+  console.error(`\n[NodeNaut MCP] Detected Executable Path: ${executableToRun}`);
+  console.error(`[NodeNaut MCP] Claude Desktop Config: ${configPath}`);
   
   try {
     const dir = path.dirname(configPath);
@@ -542,7 +542,7 @@ function setupClaudeConfig() {
         try {
           config = JSON.parse(content);
         } catch (e) {
-          console.error('[FlowPilot MCP] Warning: Claude config could not be parsed as JSON. Overwriting...');
+          console.error('[NodeNaut MCP] Warning: Claude config could not be parsed as JSON. Overwriting...');
         }
       }
     }
@@ -550,19 +550,19 @@ function setupClaudeConfig() {
     if (!config.mcpServers) config.mcpServers = {};
     
     // Add or update the server configuration
-    config.mcpServers['flowpilot'] = {
+    config.mcpServers['nodenaut'] = {
       command: isPackaged ? executableToRun : 'node',
       args: isPackaged ? [] : [executableToRun]
     };
     
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
-    console.error('[FlowPilot MCP] ✓ Claude Desktop configuration updated successfully!');
+    console.error('[NodeNaut MCP] ✓ Claude Desktop configuration updated successfully!');
   } catch (err: any) {
-    console.error(`[FlowPilot MCP] Could not auto-update Claude config: ${err.message}`);
+    console.error(`[NodeNaut MCP] Could not auto-update Claude config: ${err.message}`);
     console.error('\n--- COPY THIS CONFIG BLOCK MANUALLY ---');
     const manualConfig = {
       mcpServers: {
-        flowpilot: {
+        nodenaut: {
           command: isPackaged ? executableToRun : 'node',
           args: isPackaged ? [] : [executableToRun]
         }
@@ -576,7 +576,7 @@ function setupClaudeConfig() {
 async function main() {
   // Print beautiful header to standard error (stderr) to prevent crashing Claude Desktop
   console.error('==================================================');
-  console.error('          FLOWPILOT MCP PORTABLE SERVER           ');
+  console.error('          NODENAUT MCP PORTABLE SERVER           ');
   console.error('==================================================');
   console.error('Status: Starting WebSocket server on port 7865...');
   
@@ -597,7 +597,7 @@ async function main() {
   // If running interactively (double-clicked), open the dashboard in default browser
   if (process.stdin.isTTY) {
     const url = 'http://localhost:7865';
-    console.error('[FlowPilot] Launching control panel: ' + url);
+    console.error('[NodeNaut] Launching control panel: ' + url);
     const startCmd = process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open';
     try {
       const { exec } = require('child_process');
@@ -606,7 +606,7 @@ async function main() {
   }
   
   const server = new Server(
-    { name: 'flowpilot', version: '1.0.0' },
+    { name: 'nodenaut', version: '1.0.0' },
     { capabilities: { tools: {} } }
   );
 
@@ -622,7 +622,7 @@ async function main() {
         return { tools };
       }
     } catch (error: any) {
-      console.error('[FlowPilot MCP] Error listing tools from extension, falling back:', error.message);
+      console.error('[NodeNaut MCP] Error listing tools from extension, falling back:', error.message);
     }
 
     // Try to load cached schemas from file
@@ -660,7 +660,7 @@ async function main() {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('[FlowPilot MCP] MCP server started (stdio)');
+  console.error('[NodeNaut MCP] MCP server started (stdio)');
 }
 
 main().catch(console.error);

@@ -1,5 +1,5 @@
 /**
- * FlowPilot Custom Node Developer Boilerplate & TypeScript Definitions
+ * NodeNaut Custom Node Developer Boilerplate & TypeScript Definitions
  * 
  * Instructions:
  * 1. Open this file in your TypeScript IDE (e.g., VS Code or Cursor) for full autocomplete.
@@ -21,7 +21,7 @@
  *        { "name": "myTextOption", "type": "text", "label": "Custom Input Label", "placeholder": "Enter value..." }
  *      ]
  *    }
- * 4. Upload the JSON package in FlowPilot Settings under the Addon Panel.
+ * 4. Upload the JSON package in NodeNaut Settings under the Addon Panel.
  */
 
 // ==========================================
