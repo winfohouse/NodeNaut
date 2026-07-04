@@ -11,6 +11,19 @@ mcp-server/dist/
 releases/
 *.zip
 
+# Scratchpad and Unwanted Folders
+fix_needed/
+plans/
+image.png
+1.1.0/
+
+# Ignore all markdown files in root by default...
+/*.md
+# ...but explicitly allow the important ones!
+!/README.md
+!/PRIVACY_POLICY.md
+!/LICENSE
+
 # Environment
 .env
 .env.local
