@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Activity, Zap, ZapOff, Edit3, Settings2, Sun, Moon, Terminal, Palette, Sparkles, ShieldAlert, Code, Globe, Play, Trash2, Plus, Download, Upload, Layers, Cpu } from '@lucide/svelte';
+  import { Activity, Zap, ZapOff, Edit3, Settings2, Sun, Moon, Terminal, Palette, Sparkles, ShieldAlert, Code, Globe, Play , Trash2, Plus, Download, Upload, Layers, Cpu } from '@lucide/svelte';
   import mcpPkg from '../../mcp-server/package.json';
   
   const mcpVersion = mcpPkg.version || '1.0.0';
@@ -8,7 +8,6 @@
   import Navbar from './components/Navbar.svelte';
   import WorkflowList from './features/WorkflowList.svelte';
   import WorkflowEditor from './features/WorkflowEditor.svelte';
-  import Scanner from './features/Scanner.svelte';
   import Logs from './features/Logs.svelte';
   import GlobalVault from './features/GlobalVault.svelte';
   import Docs from './components/Docs.svelte';
